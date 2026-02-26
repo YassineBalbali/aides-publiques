@@ -1,0 +1,4 @@
+﻿titre,description,type_aide,montant_min,montant_max,organisme_financeur,statut
+Aide PME Numérique,Subvention pour la transformation numérique des PME,subvention,2000,15000,BPI France,active
+Prêt Innovation,Prêt à taux réduit pour projets innovants,pret,5000,50000,BPI France,active
+Formation IA,Financement formation intelligence artificielle,formation,500,3000,France Travail,active
