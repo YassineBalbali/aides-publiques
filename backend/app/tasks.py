@@ -1,4 +1,17 @@
 from app.celery_app import celery_app
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
+import asyncio
+
+conf = ConnectionConfig(
+    MAIL_USERNAME="belbeliyassine2004@gmail.com",
+    MAIL_PASSWORD="wuvg zycx vchv sboa",
+    MAIL_FROM="belbeliyassine2004@gmail.com",
+    MAIL_PORT=587,
+    MAIL_SERVER="smtp.gmail.com",
+    MAIL_STARTTLS=True,
+    MAIL_SSL_TLS=False,
+    USE_CREDENTIALS=True,
+)
 
 @celery_app.task
 def envoyer_email_statut(email: str, numero_dossier: str, nouveau_statut: str):
@@ -10,21 +23,26 @@ def envoyer_email_statut(email: str, numero_dossier: str, nouveau_statut: str):
         'depose': 'Déposé 📤',
     }
     label = statut_labels.get(nouveau_statut, nouveau_statut)
-    
-    print(f"""
-    ==============================
-    📧 EMAIL ENVOYÉ
-    ==============================
-    À : {email}
-    Objet : Mise à jour de votre dossier {numero_dossier}
-    
-    Bonjour,
-    
-    Votre dossier {numero_dossier} a été mis à jour.
-    Nouveau statut : {label}
-    
-    Connectez-vous sur AidesPubliques pour plus de détails.
-    ==============================
-    """)
-    
+
+    message = MessageSchema(
+        subject=f"Mise à jour de votre dossier {numero_dossier}",
+        recipients=[email],
+        body=f"""
+        <h2>Bonjour,</h2>
+        <p>Votre dossier <strong>{numero_dossier}</strong> a été mis à jour.</p>
+        <p>Nouveau statut : <strong>{label}</strong></p>
+        <br>
+        <p>Connectez-vous sur <a href="http://localhost:5173">AidesPubliques</a> pour plus de détails.</p>
+        <br>
+        <p>Cordialement,<br>L'équipe AidesPubliques</p>
+        """,
+        subtype="html"
+    )
+
+    async def send():
+        fm = FastMail(conf)
+        await fm.send_message(message)
+
+    asyncio.run(send())
+    print(f"✅ Email envoyé à {email} — dossier {numero_dossier} — statut : {label}")
     return {"status": "email_envoye", "destinataire": email}
