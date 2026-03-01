@@ -1,11 +1,15 @@
 from app.celery_app import celery_app
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 import asyncio
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 conf = ConnectionConfig(
-    MAIL_USERNAME="belbeliyassine2004@gmail.com",
-    MAIL_PASSWORD="wuvg zycx vchv sboa",
-    MAIL_FROM="belbeliyassine2004@gmail.com",
+    MAIL_USERNAME=os.getenv("MAIL_USERNAME"),
+    MAIL_PASSWORD=os.getenv("MAIL_PASSWORD"),
+    MAIL_FROM=os.getenv("MAIL_FROM"),
     MAIL_PORT=587,
     MAIL_SERVER="smtp.gmail.com",
     MAIL_STARTTLS=True,
