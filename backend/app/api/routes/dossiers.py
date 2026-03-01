@@ -6,6 +6,7 @@ import random
 import string
 from app.core.database import get_db
 from app.models.dossier import Dossier
+from app.models.utilisateur import Utilisateur
 from app.schemas.dossier import DossierCreate, DossierResponse
 from app.tasks import envoyer_email_statut
 
@@ -56,3 +57,22 @@ def changer_statut(dossier_id: UUID, statut: str, db: Session = Depends(get_db))
             nouveau_statut=statut
         )
     return dossier
+
+@router.patch("/{dossier_id}/affecter", response_model=DossierResponse)
+def affecter_instructeur(dossier_id: UUID, instructeur_id: UUID, db: Session = Depends(get_db)):
+    dossier = db.query(Dossier).options(joinedload(Dossier.demandeur)).filter(Dossier.id == dossier_id).first()
+    if not dossier:
+        raise HTTPException(status_code=404, detail="Dossier non trouvé")
+    
+    instructeur = db.query(Utilisateur).filter(
+        Utilisateur.id == instructeur_id,
+        Utilisateur.role == "instructeur"
+    ).first()
+    if not instructeur:
+        raise HTTPException(status_code=404, detail="Instructeur non trouvé")
+    
+    dossier.instructeur_id = instructeur_id
+    dossier.statut = "en_instruction"
+    db.commit()
+    db.refresh(dossier)
+    return db.query(Dossier).options(joinedload(Dossier.demandeur)).filter(Dossier.id == dossier_id).first()

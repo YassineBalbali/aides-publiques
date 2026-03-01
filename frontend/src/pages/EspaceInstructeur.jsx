@@ -12,10 +12,22 @@ function EspaceInstructeur() {
     const token = localStorage.getItem('token')
     if (!token) { navigate('/login'); return }
 
-    fetch('http://127.0.0.1:8000/dossiers/')
-      .then(r => r.json())
-      .then(data => { setDossiers(data); setChargement(false) })
-      .catch(() => setChargement(false))
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]))
+      const instructeurId = payload.sub // ID de l'instructeur connecté
+
+      fetch('http://127.0.0.1:8000/dossiers/')
+        .then(r => r.json())
+        .then(data => {
+          // Filtrer uniquement les dossiers affectés à cet instructeur
+          const mesDossiers = data.filter(d => d.instructeur_id === instructeurId)
+          setDossiers(mesDossiers)
+          setChargement(false)
+        })
+        .catch(() => setChargement(false))
+    } catch {
+      navigate('/login')
+    }
   }, [])
 
   const changerStatut = async (dossierId, nouveauStatut) => {
@@ -79,7 +91,7 @@ function EspaceInstructeur() {
 
       <div className="px-10 py-8">
         <h1 className="text-3xl font-bold text-white mb-1">Espace Instructeur</h1>
-        <p className="text-slate-400 mb-8">Traitez les dossiers en attente de décision</p>
+        <p className="text-slate-400 mb-8">Traitez les dossiers qui vous sont affectés</p>
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4 mb-8">
@@ -114,7 +126,6 @@ function EspaceInstructeur() {
             className="bg-white rounded-xl px-5 py-3 text-gray-800 focus:outline-none shadow-lg"
           >
             <option value="">Tous les statuts</option>
-            <option value="brouillon">Brouillon</option>
             <option value="depose">Déposé</option>
             <option value="en_instruction">En instruction</option>
             <option value="accepte">Accepté</option>
@@ -127,13 +138,16 @@ function EspaceInstructeur() {
         {/* Tableau */}
         <div style={{backgroundColor: '#1e293b'}} className="rounded-2xl shadow-xl border border-slate-700 overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-700">
-            <h2 className="text-white font-bold text-lg">Liste des dossiers</h2>
+            <h2 className="text-white font-bold text-lg">Mes dossiers affectés</h2>
           </div>
 
           {chargement ? (
             <p className="text-slate-400 p-6 text-center">Chargement...</p>
           ) : dossiersFiltres.length === 0 ? (
-            <p className="text-slate-400 p-6 text-center">Aucun dossier trouvé</p>
+            <div className="p-12 text-center">
+              <p className="text-slate-400 text-lg mb-2">Aucun dossier affecté</p>
+              <p className="text-slate-500 text-sm">L'administrateur doit vous affecter des dossiers depuis la page Affectations</p>
+            </div>
           ) : (
             <table className="w-full">
               <thead style={{backgroundColor: '#0f172a'}}>

@@ -11,6 +11,7 @@ import DashboardDemandeur from './pages/DashboardDemandeur'
 import DashboardInstructeur from './pages/DashboardInstructeur'
 import EspaceInstructeur from './pages/EspaceInstructeur'
 import GestionUtilisateurs from './pages/GestionUtilisateurs'
+import AffectationDossiers from './pages/AffectationDossiers'
 
 function ProtectedAdmin({ children }) {
   const token = localStorage.getItem('token')
@@ -58,6 +59,7 @@ function Navbar() {
             <a href="/admin" className="hover:text-yellow-400 transition-colors">Dossiers</a>
             <a href="/admin/aides" className="hover:text-yellow-400 transition-colors">Gestion Aides</a>
             <a href="/admin/utilisateurs" className="hover:text-yellow-400 transition-colors">Utilisateurs</a>
+            <a href="/admin/affectations" className="hover:text-yellow-400 transition-colors">Affectations</a>
             <a href="/dashboard" className="hover:text-yellow-400 transition-colors">Dashboard</a>
           </>
         )}
@@ -301,6 +303,11 @@ function App() {
         <Route path="/admin/utilisateurs" element={
           <ProtectedAdmin>
             <GestionUtilisateurs />
+          </ProtectedAdmin>
+        } />
+        <Route path="/admin/affectations" element={
+          <ProtectedAdmin>
+            <AffectationDossiers />
           </ProtectedAdmin>
         } />
         <Route path="/dashboard" element={
