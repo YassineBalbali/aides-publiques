@@ -39,6 +39,38 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)):
 def get_utilisateurs(db: Session = Depends(get_db)):
     return db.query(Utilisateur).all()
 
+@router.get("/profil/{user_id}", response_model=UtilisateurResponse)
+def get_profil(user_id: UUID, db: Session = Depends(get_db)):
+    utilisateur = db.query(Utilisateur).filter(Utilisateur.id == user_id).first()
+    if not utilisateur:
+        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+    return utilisateur
+
+@router.put("/profil/{user_id}", response_model=UtilisateurResponse)
+def update_profil(user_id: UUID, data: dict, db: Session = Depends(get_db)):
+    utilisateur = db.query(Utilisateur).filter(Utilisateur.id == user_id).first()
+    if not utilisateur:
+        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+    
+    if "nom" in data:
+        utilisateur.nom = data["nom"]
+    if "prenom" in data:
+        utilisateur.prenom = data["prenom"]
+    if "email" in data:
+        utilisateur.email = data["email"]
+    
+    # Changement de mot de passe
+    if "nouveau_mot_de_passe" in data and data["nouveau_mot_de_passe"]:
+        if "ancien_mot_de_passe" not in data:
+            raise HTTPException(status_code=400, detail="Ancien mot de passe requis")
+        if not verify_password(data["ancien_mot_de_passe"], utilisateur.mot_de_passe):
+            raise HTTPException(status_code=400, detail="Ancien mot de passe incorrect")
+        utilisateur.mot_de_passe = hash_password(data["nouveau_mot_de_passe"])
+    
+    db.commit()
+    db.refresh(utilisateur)
+    return utilisateur
+
 @router.put("/utilisateurs/{user_id}", response_model=UtilisateurResponse)
 def update_utilisateur(user_id: UUID, data: dict, db: Session = Depends(get_db)):
     utilisateur = db.query(Utilisateur).filter(Utilisateur.id == user_id).first()

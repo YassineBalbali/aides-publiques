@@ -12,6 +12,7 @@ import DashboardInstructeur from './pages/DashboardInstructeur'
 import EspaceInstructeur from './pages/EspaceInstructeur'
 import GestionUtilisateurs from './pages/GestionUtilisateurs'
 import AffectationDossiers from './pages/AffectationDossiers'
+import Profil from './pages/Profil'
 
 function ProtectedAdmin({ children }) {
   const token = localStorage.getItem('token')
@@ -62,6 +63,9 @@ function Navbar() {
             <a href="/admin/affectations" className="hover:text-yellow-400 transition-colors">Affectations</a>
             <a href="/dashboard" className="hover:text-yellow-400 transition-colors">Dashboard</a>
           </>
+        )}
+        {estConnecte && (
+          <a href="/profil" className="hover:text-yellow-400 transition-colors">👤 Profil</a>
         )}
       </div>
       {estConnecte ? (
@@ -290,6 +294,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/aides" element={<Catalogue />} />
         <Route path="/deposer" element={<DeposerDossier />} />
+        <Route path="/profil" element={<Profil />} />
         <Route path="/admin" element={
           <ProtectedAdmin>
             <EspaceAdmin />
