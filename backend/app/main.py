@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.core.database import Base, engine
 from app.models import aide, utilisateur, dossier
 from app.api.routes import aides, auth, dossiers
+import os
 
 Base.metadata.create_all(bind=engine)
 
@@ -23,6 +25,9 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(aides.router)
 app.include_router(dossiers.router)
+
+os.makedirs("photos", exist_ok=True)
+app.mount("/photos", StaticFiles(directory="photos"), name="photos")
 
 @app.get("/")
 def accueil():

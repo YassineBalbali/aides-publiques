@@ -1,7 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
+import shutil
+import os
 from app.core.database import get_db
 from app.core.security import hash_password, verify_password, create_access_token
 from app.models.utilisateur import Utilisateur
@@ -14,7 +17,6 @@ def register(user_data: UtilisateurCreate, db: Session = Depends(get_db)):
     existing = db.query(Utilisateur).filter(Utilisateur.email == user_data.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email déjà utilisé")
-    
     utilisateur = Utilisateur(
         email=user_data.email,
         mot_de_passe=hash_password(user_data.mot_de_passe),
@@ -31,7 +33,6 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)):
     utilisateur = db.query(Utilisateur).filter(Utilisateur.email == credentials.email).first()
     if not utilisateur or not verify_password(credentials.mot_de_passe, utilisateur.mot_de_passe):
         raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
-    
     token = create_access_token({"sub": str(utilisateur.id), "role": utilisateur.role})
     return {"access_token": token, "token_type": "bearer"}
 
@@ -51,25 +52,37 @@ def update_profil(user_id: UUID, data: dict, db: Session = Depends(get_db)):
     utilisateur = db.query(Utilisateur).filter(Utilisateur.id == user_id).first()
     if not utilisateur:
         raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
-    
     if "nom" in data:
         utilisateur.nom = data["nom"]
     if "prenom" in data:
         utilisateur.prenom = data["prenom"]
     if "email" in data:
         utilisateur.email = data["email"]
-    
-    # Changement de mot de passe
     if "nouveau_mot_de_passe" in data and data["nouveau_mot_de_passe"]:
         if "ancien_mot_de_passe" not in data:
             raise HTTPException(status_code=400, detail="Ancien mot de passe requis")
         if not verify_password(data["ancien_mot_de_passe"], utilisateur.mot_de_passe):
             raise HTTPException(status_code=400, detail="Ancien mot de passe incorrect")
         utilisateur.mot_de_passe = hash_password(data["nouveau_mot_de_passe"])
-    
     db.commit()
     db.refresh(utilisateur)
     return utilisateur
+
+@router.post("/profil/{user_id}/photo")
+async def upload_photo(user_id: UUID, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    utilisateur = db.query(Utilisateur).filter(Utilisateur.id == user_id).first()
+    if not utilisateur:
+        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+    os.makedirs("photos", exist_ok=True)
+    extension = file.filename.split(".")[-1].lower()
+    if extension not in ["jpg", "jpeg", "png", "webp"]:
+        raise HTTPException(status_code=400, detail="Format non supporté. Utilisez JPG, PNG ou WEBP")
+    nom_fichier = f"photos/{user_id}.{extension}"
+    with open(nom_fichier, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    utilisateur.photo = f"http://127.0.0.1:8000/photos/{user_id}.{extension}"
+    db.commit()
+    return {"photo": utilisateur.photo}
 
 @router.put("/utilisateurs/{user_id}", response_model=UtilisateurResponse)
 def update_utilisateur(user_id: UUID, data: dict, db: Session = Depends(get_db)):

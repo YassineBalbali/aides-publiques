@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Boolean, DateTime, Enum
 from sqlalchemy.dialects.postgresql import UUID
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import enum
 from app.core.database import Base
@@ -20,4 +20,5 @@ class Utilisateur(Base):
     prenom = Column(String(100))
     role = Column(Enum(RoleUtilisateur), default=RoleUtilisateur.demandeur)
     est_actif = Column(Boolean, default=True)
-    cree_le = Column(DateTime, default=datetime.utcnow)
+    photo = Column(String(500), nullable=True)
+    cree_le = Column(DateTime, default=lambda: datetime.now(timezone.utc))

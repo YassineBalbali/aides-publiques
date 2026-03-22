@@ -29,4 +29,11 @@ class Aide(Base):
     organisme_financeur = Column(String(200))
     statut = Column(Enum(StatutAide), default=StatutAide.active)
     cree_le = Column(DateTime, default=datetime.utcnow)
-    
+
+    # Nouveaux champs
+    beneficiaires = Column(String(300))
+    date_ouverture = Column(Date, nullable=True)
+    date_fermeture = Column(Date, nullable=True)
+    documents_requis = Column(Text)
+    criteres_eligibilite = Column(Text)
+    lien_externe = Column(String(500))
