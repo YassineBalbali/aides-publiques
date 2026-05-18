@@ -1,333 +1,258 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import api from '../api'
+import { NotificationIcon } from './Notifications'
 
-function DeposerDossier() {
+const MAX_SIZE = 10 * 1024 * 1024
+
+function Navbar({ prenom, nom }) {
   const navigate = useNavigate()
-  const [aides, setAides] = useState([])
-  const [succes, setSucces] = useState(false)
-  const [numeroDossier, setNumeroDossier] = useState('')
-  const [erreur, setErreur] = useState('')
-  const [siretChargement, setSiretChargement] = useState(false)
-  const [siretInfo, setSiretInfo] = useState('')
-  const [siretErreur, setSiretErreur] = useState('')
-  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm()
-
-  const document = watch('document')
-
-  useEffect(() => {
-    api.get('/aides/')
-      .then(r => setAides(r.data))
-      .catch(() => {})
-  }, [])
-
-  const onSubmit = async (data) => {
-    setErreur('')
-    const token = localStorage.getItem('token')
-    if (!token) { navigate('/login'); return }
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]))
-      const response = await api.post(`/dossiers/?demandeur_id=${payload.sub}`, {
-        aide_id: data.aide_id,
-        commentaire: data.description || data.commentaire
-      })
-      setNumeroDossier(response.data.numero)
-      setSucces(true)
-    } catch (err) {
-      setErreur(err.response?.data?.detail || 'Erreur lors du dépôt')
-    }
-  }
-
-  const BandeauRF = () => (
-    <div>
-      <div style={{backgroundColor: '#1f2d6e'}} className="px-8 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="bg-red-600 text-white font-bold text-sm px-2 py-1">RF</div>
-          <div className="text-white text-xs">
-            <div className="font-bold">RÉPUBLIQUE FRANÇAISE</div>
-            <div className="text-blue-200">Liberté · Égalité · Fraternité</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link to="/login" className="text-white text-sm hover:underline">→ Connexion</Link>
-          <Link to="/register" className="bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2 rounded transition-colors">S'inscrire</Link>
-        </div>
-      </div>
-      <div className="bg-white border-b border-gray-200 px-8 py-3 flex items-center justify-between shadow-sm">
-        <a href="/" className="text-blue-900 font-bold text-xl">Aides Publiques</a>
-        <div className="flex items-center gap-8 text-sm">
-          <a href="/" className="text-gray-700 hover:text-blue-900 transition-colors">Accueil</a>
-          <a href="/aides" className="text-gray-700 hover:text-blue-900 transition-colors">Catalogue des aides</a>
-          <a href="/deposer" className="text-blue-900 font-semibold border-b-2 border-blue-900 pb-1">Déposer un dossier</a>
-          <a href="/mon-espace" className="text-gray-700 hover:text-blue-900 transition-colors">Suivi</a>
-        </div>
-      </div>
-    </div>
-  )
-
-  const Footer = () => (
-    <footer className="bg-gray-50 border-t border-gray-200 py-12 px-12 mt-12">
-      <div className="grid grid-cols-4 gap-8 max-w-6xl mx-auto mb-8">
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="bg-red-600 text-white font-bold text-sm px-2 py-1">RF</div>
-            <span className="font-bold text-gray-900 text-sm">RÉPUBLIQUE FRANÇAISE</span>
-          </div>
-          <p className="text-gray-500 text-sm">Plateforme de gestion et suivi des aides publiques.</p>
-        </div>
-        <div>
-          <h3 className="font-bold text-gray-900 mb-4">Navigation</h3>
-          <div className="flex flex-col gap-2">
-            <a href="/aides" className="text-gray-500 hover:text-blue-900 text-sm">Catalogue des aides</a>
-            <a href="/deposer" className="text-gray-500 hover:text-blue-900 text-sm">Déposer un dossier</a>
-            <a href="/mon-espace" className="text-gray-500 hover:text-blue-900 text-sm">Suivre mon dossier</a>
-          </div>
-        </div>
-        <div>
-          <h3 className="font-bold text-gray-900 mb-4">Espace pro</h3>
-          <div className="flex flex-col gap-2">
-            <a href="/instructeur" className="text-gray-500 hover:text-blue-900 text-sm">Espace instructeur</a>
-            <a href="/admin" className="text-gray-500 hover:text-blue-900 text-sm">Administration</a>
-          </div>
-        </div>
-        <div>
-          <h3 className="font-bold text-gray-900 mb-4">Informations</h3>
-          <div className="flex flex-col gap-2">
-            <a href="#" className="text-gray-500 hover:text-blue-900 text-sm">Mentions légales</a>
-            <a href="#" className="text-gray-500 hover:text-blue-900 text-sm">Politique de confidentialité</a>
-            <a href="#" className="text-gray-500 hover:text-blue-900 text-sm">Accessibilité</a>
-          </div>
-        </div>
-      </div>
-      <div className="border-t border-gray-200 pt-6 text-center">
-        <p className="text-gray-400 text-sm">© 2026 Plateforme Aides Publiques — Tous droits réservés</p>
-      </div>
-    </footer>
-  )
-
-  if (succes) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <BandeauRF />
-        <div className="max-w-2xl mx-auto py-20 px-4 text-center">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-10">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-green-600 text-3xl">✓</span>
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Dossier soumis avec succès !</h1>
-            <p className="text-gray-500 mb-6">Votre demande a bien été enregistrée.</p>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg px-6 py-4 mb-8">
-              <p className="text-sm text-gray-500 mb-1">Numéro de dossier</p>
-              <p className="text-2xl font-bold text-blue-900">{numeroDossier}</p>
-            </div>
-            <p className="text-gray-400 text-sm mb-8">
-              Conservez ce numéro pour suivre l'avancement de votre demande.
-            </p>
-            <div className="flex gap-3">
-              <a href="/aides" className="flex-1 border border-gray-300 text-gray-700 font-semibold py-3 rounded text-center hover:bg-gray-50">
-                Retour au catalogue
-              </a>
-              <a href="/mon-espace" className="flex-1 text-white font-semibold py-3 rounded text-center hover:opacity-90" style={{backgroundColor: '#1f2d6e'}}>
-                Suivre mon dossier
-              </a>
-            </div>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    )
-  }
-
+  const nomPlateforme = localStorage.getItem('plateforme_nom') || 'Aides Publiques'
   return (
-    <div className="min-h-screen bg-gray-50">
-      <BandeauRF />
-
-      {/* Header */}
-      <div style={{backgroundColor: '#1f2d6e'}} className="px-12 py-8">
-        <h1 className="text-3xl font-bold text-white mb-1">Déposer un dossier</h1>
-        <p className="text-blue-200">Remplissez le formulaire ci-dessous pour soumettre votre demande d'aide.</p>
+    <nav className="bg-white border-b border-gray-100 sticky top-0 z-40">
+      <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between relative">
+        <Link to="/" className="flex items-center gap-2.5 no-underline">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0"><span className="text-white font-bold text-xs">AP</span></div>
+          <span className="font-bold text-gray-900 text-sm">{nomPlateforme}</span>
+        </Link>
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-0.5">
+          {[{ to: '/', l: 'Accueil' }, { to: '/catalogue', l: 'Catalogue' }, { to: '/deposer', l: 'Déposer' }, { to: '/mon-espace', l: 'Mon espace' }].map(({ to, l }) => (
+            <Link key={to} to={to} className={`px-3 py-1.5 rounded-lg text-sm font-medium no-underline transition-colors ${to === '/deposer' ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'}`}>{l}</Link>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span className="text-xs text-emerald-700 font-semibold">{prenom} {nom}</span>
+          </div>
+          <NotificationIcon />
+          <button onClick={() => { localStorage.removeItem('token'); navigate('/login') }} className="px-3 py-1.5 rounded-lg text-sm font-medium bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 cursor-pointer">Déconnexion</button>
+        </div>
       </div>
+    </nav>
+  )
+}
 
-      <div className="max-w-3xl mx-auto py-10 px-4">
-        <form onSubmit={handleSubmit(onSubmit)}>
-
-          {/* Étape 1 — Aide demandée */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-6">1. Aide demandée</h2>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Sélectionnez l'aide *</label>
-            <select
-              {...register('aide_id', { required: 'Veuillez sélectionner une aide' })}
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:border-blue-900 text-sm">
-              <option value="">Choisir une aide...</option>
-              {aides.map(aide => (
-                <option key={aide.id} value={aide.id}>{aide.titre}</option>
-              ))}
-            </select>
-            {errors.aide_id && <p className="text-red-500 text-xs mt-1">{errors.aide_id.message}</p>}
-          </div>
-
-          {/* Étape 2 — Informations demandeur */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-6">2. Informations du demandeur</h2>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nom / Raison sociale</label>
-                <input
-                  {...register('nom')}
-                  placeholder="Ex: SARL Dupont & Fils"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:border-blue-900 text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">SIRET (si applicable)</label>
-                <div className="relative">
-                  <input
-                  {...register('siret')}
-                  placeholder="123 456 789 00012"
-                  maxLength={14}
-                  onChange={async (e) => {
-  const siret = e.target.value.replace(/\s/g, '')
-  setValue('siret', e.target.value)
-  if (siret.length === 14) {
-    setSiretChargement(true)
-    setSiretErreur('')
-    setSiretInfo('')
-    try {
-      const res = await fetch(`https://recherche-entreprises.api.gouv.fr/search?q=${siret}&page=1&per_page=1`)
-      const data = await res.json()
-      if (data.results && data.results.length > 0) {
-        const entreprise = data.results[0]
-        const nom = entreprise.nom_raison_sociale || entreprise.nom_complet || ''
-        const adresse = entreprise.siege?.adresse || ''
-        setValue('nom', nom)
-        setValue('adresse', adresse)
-        setSiretInfo(`✅ ${nom}`)
-      } else {
-        setSiretErreur('SIRET non trouvé')
-      }
-    } catch {
-      setSiretErreur('Erreur de recherche')
-    } finally {
-      setSiretChargement(false)
-    }
-  }
-}}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:border-blue-900 text-sm"
-                  />
-                  {siretChargement && <p className="text-blue-600 text-xs mt-1">🔍 Recherche en cours...</p>}
-                  {siretInfo && <p className="text-green-600 text-xs mt-1">{siretInfo}</p>}
-                  {siretErreur && <p className="text-red-500 text-xs mt-1">❌ {siretErreur}</p>}
-                  </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email de contact</label>
-                <input
-                  type="email"
-                  {...register('email')}
-                  placeholder="contact@exemple.fr"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:border-blue-900 text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
-                <input
-                  {...register('telephone')}
-                  placeholder="01 23 45 67 89"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:border-blue-900 text-sm"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
-              <input
-                {...register('adresse')}
-                placeholder="12 rue de la République, 75001 Paris"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:border-blue-900 text-sm"
-              />
-            </div>
-          </div>
-
-          {/* Étape 3 — Détail de la demande */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-6">3. Détail de la demande</h2>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Montant demandé (€)</label>
-              <input
-                {...register('montant')}
-                placeholder="25000"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:border-blue-900 text-sm"
-              />
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description du projet *</label>
-              <textarea
-                {...register('description', { required: 'Description obligatoire' })}
-                rows={4}
-                placeholder="Décrivez votre projet et l'utilisation prévue de l'aide..."
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:border-blue-900 text-sm resize-none"
-              />
-              {errors.description && <p className="text-red-500 text-xs mt-1">{errors.description.message}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Justification</label>
-              <textarea
-                {...register('justification')}
-                rows={4}
-                placeholder="Expliquez pourquoi vous êtes éligible à cette aide..."
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:border-blue-900 text-sm resize-none"
-              />
-            </div>
-          </div>
-
-          {/* Étape 4 — Documents */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-6">4. Documents justificatifs</h2>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center hover:border-blue-900 transition-colors">
-              <div className="text-4xl mb-3 text-gray-400">↑</div>
-              <p className="text-gray-500 mb-1">Glissez-déposez vos fichiers ici</p>
-              <p className="text-gray-400 text-sm mb-4">PDF, JPG, PNG — 10 Mo max par fichier</p>
-              <label className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 font-semibold px-6 py-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors text-sm">
-                📄 Parcourir
-                <input
-                  type="file"
-                  {...register('document')}
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  className="hidden"
-                />
-              </label>
-              {document && document[0] && (
-                <p className="text-green-600 text-sm mt-4">✅ {document[0].name}</p>
-              )}
-            </div>
-          </div>
-
-          {erreur && (
-            <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-4 py-3 mb-6 text-sm">
-              ❌ {erreur}
-            </div>
-          )}
-
-          {/* Boutons */}
-          <div className="flex gap-4">
-            <button
-              type="button"
-              className="flex-1 border border-gray-300 text-gray-700 font-semibold py-3 rounded-lg hover:bg-gray-50 transition-colors text-sm">
-              💾 Sauvegarder brouillon
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-300 text-white font-semibold py-3 rounded-lg transition-colors text-sm">
-              {isSubmitting ? 'Envoi...' : '→ Soumettre le dossier'}
-            </button>
-          </div>
-        </form>
-
-        <Footer />
+function StepHeader({ n, title }) {
+  return (
+    <div className="flex items-center gap-3 mb-5">
+      <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
+        <span className="text-white font-extrabold text-xs">{n}</span>
       </div>
+      <span className="text-sm font-bold text-gray-900">{title}</span>
     </div>
   )
 }
 
-export default DeposerDossier
+export default function DeposerDossier() {
+  const navigate = useNavigate()
+  const [aides, setAides] = useState([])
+  const [aideSelectionnee, setAideSelectionnee] = useState(null)
+  const [succes, setSucces] = useState(false)
+  const [numeroDossier, setNumeroDossier] = useState('')
+  const [erreur, setErreur] = useState('')
+  const [erreurFichier, setErreurFichier] = useState('')
+  const [adresseSuggestions, setAdresseSuggestions] = useState([])
+  const adresseRef = useRef(null)
+
+  const token = localStorage.getItem('token')
+  const payload = token ? JSON.parse(atob(token.split('.')[1])) : null
+  const prenom = payload?.prenom || ''
+  const nom = payload?.nom || ''
+
+  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm()
+  const documentWatch = watch('document')
+  const aideIdWatch = watch('aide_id')
+
+  useEffect(() => {
+    if (!token) { navigate('/login'); return }
+    api.get('/aides/').then(r => setAides(r.data)).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    setAideSelectionnee(aides.find(a => a.id === aideIdWatch) || null)
+  }, [aideIdWatch, aides])
+
+  useEffect(() => {
+    if (documentWatch?.length > 0) {
+      const invalides = Array.from(documentWatch).filter(f => f.size > MAX_SIZE)
+      setErreurFichier(invalides.length > 0 ? `${invalides.length} fichier(s) dépassent 10 Mo` : '')
+    }
+  }, [documentWatch])
+
+  const onSubmit = async (data) => {
+    if (erreurFichier) return
+    setErreur('')
+    try {
+      const details = [data.nom && `Nom : ${data.nom}`, data.siret && `SIRET : ${data.siret}`, data.email && `Email : ${data.email}`, data.telephone && `Tél : ${data.telephone}`, data.adresse && `Adresse : ${data.adresse}`, data.montant && `Montant : ${data.montant} €`, data.description && `Description : ${data.description}`, data.justification && `Justification : ${data.justification}`].filter(Boolean).join('\n')
+      const res = await api.post(`/dossiers/?demandeur_id=${payload.sub}`, { aide_id: data.aide_id, commentaire: details })
+      const dossierId = res.data.id
+      if (data.document?.length > 0) {
+        for (const file of Array.from(data.document)) {
+          if (file.size <= MAX_SIZE) {
+            const fd = new FormData(); fd.append('file', file)
+            await api.post(`/documents/dossier/${dossierId}?uploade_par=${payload.sub}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+          }
+        }
+      }
+      setNumeroDossier(res.data.numero); setSucces(true)
+    } catch (err) { setErreur(err.response?.data?.detail || 'Erreur lors du dépôt') }
+  }
+
+  const handleAdresse = async (e) => {
+    const val = e.target.value; setValue('adresse', val)
+    if (val.length >= 3) {
+      try { const r = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(val)}&limit=8`); const d = await r.json(); setAdresseSuggestions(d.features || []) }
+      catch { setAdresseSuggestions([]) }
+    } else setAdresseSuggestions([])
+  }
+
+  const inp = (err) => `w-full px-3 py-2.5 rounded-xl text-sm border ${err ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'} outline-none focus:border-blue-400 text-gray-800 transition-colors`
+
+  if (succes) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="bg-white border border-gray-100 rounded-2xl p-12 max-w-md w-full text-center shadow-sm">
+        <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-5 text-3xl">✅</div>
+        <h1 className="text-2xl font-extrabold text-gray-900 mb-2 tracking-tight">Dossier soumis !</h1>
+        <p className="text-sm text-gray-500 mb-6">Votre demande a bien été enregistrée.</p>
+        <div className="bg-gray-50 border border-gray-100 rounded-xl p-5 mb-6">
+          <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold mb-2">Numéro de dossier</p>
+          <p className="text-3xl font-extrabold text-blue-600 tracking-tight">{numeroDossier}</p>
+        </div>
+        <div className="flex gap-3">
+          <Link to="/catalogue" className="flex-1 py-2.5 border border-gray-200 text-gray-700 text-sm font-semibold rounded-xl text-center no-underline hover:bg-gray-50">Catalogue</Link>
+          <Link to="/mon-espace" className="flex-1 py-2.5 bg-blue-600 text-white text-sm font-bold rounded-xl text-center no-underline hover:bg-blue-700">Suivre mon dossier →</Link>
+        </div>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navbar prenom={prenom} nom={nom} />
+      <div className="bg-white border-b border-gray-100 px-6 py-7">
+        <div className="max-w-3xl mx-auto">
+          <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Déposer un dossier</h1>
+          <p className="text-sm text-gray-400 mt-1">Remplissez le formulaire en 4 étapes pour soumettre votre demande.</p>
+        </div>
+      </div>
+
+      <div className="max-w-3xl mx-auto px-6 py-6">
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
+
+          {/* Étape 1 */}
+          <div className="bg-white border border-gray-100 rounded-xl p-6 mb-4 shadow-sm">
+            <StepHeader n={1} title="Aide demandée" />
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Sélectionnez l'aide <span className="text-red-500">*</span></label>
+              <select {...register('aide_id', { required: 'Veuillez sélectionner une aide' })} className={inp(!!errors.aide_id)}>
+                <option value="">Choisir une aide...</option>
+                {aides.map(a => <option key={a.id} value={a.id}>{a.titre}</option>)}
+              </select>
+              {errors.aide_id && <p className="text-red-500 text-xs mt-1">{errors.aide_id.message}</p>}
+            </div>
+            {aideSelectionnee && (
+              <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 mt-4">
+                <p className="text-xs font-bold text-blue-600 uppercase tracking-wide mb-3">Informations sur cette aide</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {aideSelectionnee.type_aide && <div className="bg-white border border-gray-100 rounded-lg px-3 py-2.5"><p className="text-xs text-gray-400">Type</p><p className="text-sm font-bold text-gray-800 mt-0.5">{aideSelectionnee.type_aide}</p></div>}
+                  {(aideSelectionnee.montant_min || aideSelectionnee.montant_max) && <div className="bg-white border border-gray-100 rounded-lg px-3 py-2.5"><p className="text-xs text-gray-400">Montant</p><p className="text-sm font-bold text-blue-600 mt-0.5">{aideSelectionnee.montant_min?.toLocaleString() || '0'} – {aideSelectionnee.montant_max?.toLocaleString() || '∞'} €</p></div>}
+                  {aideSelectionnee.organisme_financeur && <div className="bg-white border border-gray-100 rounded-lg px-3 py-2.5"><p className="text-xs text-gray-400">Organisme</p><p className="text-sm font-bold text-gray-800 mt-0.5">{aideSelectionnee.organisme_financeur}</p></div>}
+                </div>
+                {aideSelectionnee.documents_requis && (
+                  <div className="mt-3 px-3 py-2.5 bg-amber-50 border border-amber-100 rounded-lg text-xs font-semibold text-amber-700">
+                    📎 Documents requis : {aideSelectionnee.documents_requis}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Étape 2 */}
+          <div className="bg-white border border-gray-100 rounded-xl p-6 mb-4 shadow-sm overflow-visible">
+            <StepHeader n={2} title="Informations du demandeur" />
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div><label className="block text-xs font-semibold text-gray-600 mb-1.5">Nom / Raison sociale</label><input {...register('nom')} placeholder="SARL Dupont & Fils" className={inp(false)} /></div>
+              <div><label className="block text-xs font-semibold text-gray-600 mb-1.5">SIRET</label><input {...register('siret')} placeholder="38012986646943" maxLength={14} className={inp(false)} /></div>
+              <div><label className="block text-xs font-semibold text-gray-600 mb-1.5">Email de contact</label><input type="email" {...register('email')} placeholder="contact@exemple.fr" className={inp(false)} /></div>
+              <div><label className="block text-xs font-semibold text-gray-600 mb-1.5">Téléphone</label><input {...register('telephone')} placeholder="01 23 45 67 89" className={inp(false)} /></div>
+            </div>
+            <div className="relative">
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Adresse</label>
+              <input ref={adresseRef} {...register('adresse')} placeholder="12 rue de la République, 75001 Paris" autoComplete="off" onChange={handleAdresse} className={inp(false)} />
+              {adresseSuggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden mt-1 max-h-64 overflow-y-auto">
+                  {adresseSuggestions.map((s, i) => (
+                    <button key={i} type="button" onClick={() => { setValue('adresse', s.properties.label); setAdresseSuggestions([]) }}
+                      className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-50 last:border-0 transition-colors">
+                      {s.properties.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Étape 3 */}
+          <div className="bg-white border border-gray-100 rounded-xl p-6 mb-4 shadow-sm">
+            <StepHeader n={3} title="Détail de la demande" />
+            <div className="flex flex-col gap-4">
+              <div><label className="block text-xs font-semibold text-gray-600 mb-1.5">Montant demandé (€)</label><input {...register('montant')} placeholder="25000" className={inp(false)} /></div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Description du projet <span className="text-red-500">*</span></label>
+                <textarea {...register('description', { required: 'Description obligatoire' })} rows={4} placeholder="Décrivez votre projet..." className={`${inp(!!errors.description)} resize-none`} />
+                {errors.description && <p className="text-red-500 text-xs mt-1">{errors.description.message}</p>}
+              </div>
+              <div><label className="block text-xs font-semibold text-gray-600 mb-1.5">Justification</label><textarea {...register('justification')} rows={3} placeholder="Expliquez pourquoi vous êtes éligible..." className={`${inp(false)} resize-none`} /></div>
+            </div>
+          </div>
+
+          {/* Étape 4 */}
+          <div className="bg-white border border-gray-100 rounded-xl p-6 mb-6 shadow-sm">
+            <StepHeader n={4} title="Documents justificatifs" />
+            {aideSelectionnee?.documents_requis && (
+              <div className="mb-4 px-3 py-2.5 bg-amber-50 border border-amber-100 rounded-lg text-xs font-semibold text-amber-700">
+                📎 Documents requis : {aideSelectionnee.documents_requis}
+              </div>
+            )}
+            <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center bg-gray-50">
+              <p className="text-sm text-gray-600 mb-1">Glissez-déposez vos fichiers ici</p>
+              <p className="text-xs text-gray-400 mb-5">PDF, JPG, PNG — max 10 Mo</p>
+              <label className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 bg-white hover:bg-gray-50 cursor-pointer transition-colors">
+                📁 Parcourir les fichiers
+                <input type="file" {...register('document')} accept=".pdf,.jpg,.jpeg,.png" multiple className="hidden" />
+              </label>
+              {documentWatch?.length > 0 && (
+                <div className="mt-4 flex flex-col gap-2 text-left">
+                  {Array.from(documentWatch).map((f, i) => (
+                    <div key={i} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs ${f.size > MAX_SIZE ? 'bg-red-50 border border-red-100' : 'bg-emerald-50 border border-emerald-100'}`}>
+                      <span className={`font-bold ${f.size > MAX_SIZE ? 'text-red-500' : 'text-emerald-600'}`}>{f.size > MAX_SIZE ? '✕' : '✓'}</span>
+                      <span className="text-gray-700 flex-1">{f.name}</span>
+                      <span className="text-gray-400">{(f.size / 1048576).toFixed(1)} Mo</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {erreurFichier && <p className="text-red-500 text-xs mt-3">{erreurFichier}</p>}
+            </div>
+          </div>
+
+          {erreur && <div className="mb-4 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm font-semibold text-red-600">{erreur}</div>}
+
+          <div className="flex gap-3">
+            <button type="button" className="flex-1 py-3 border border-gray-200 text-gray-700 text-sm font-semibold rounded-xl hover:bg-gray-50 transition-colors">Sauvegarder brouillon</button>
+            <button type="submit" disabled={isSubmitting || !!erreurFichier}
+              className="flex-[2] py-3 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors">
+              {isSubmitting ? 'Envoi en cours...' : 'Soumettre le dossier →'}
+            </button>
+          </div>
+        </form>
+      </div>
+      <footer className="border-t border-gray-100 py-5 text-center mt-4">
+        <p className="text-xs text-gray-400">© 2026 Plateforme Aides Publiques</p>
+      </footer>
+    </div>
+  )
+}

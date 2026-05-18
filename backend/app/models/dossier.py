@@ -21,6 +21,7 @@ class Dossier(Base):
     numero = Column(String(20), unique=True, nullable=False)
     statut = Column(Enum(StatutDossier), default=StatutDossier.brouillon)
     commentaire = Column(Text)
+    commentaire_interne = Column(Text, nullable=True)
     demandeur_id = Column(UUID(as_uuid=True), ForeignKey("utilisateurs.id"))
     aide_id = Column(UUID(as_uuid=True), ForeignKey("aides.id"))
     instructeur_id = Column(UUID(as_uuid=True), ForeignKey("utilisateurs.id"), nullable=True)

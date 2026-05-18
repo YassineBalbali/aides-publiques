@@ -1,117 +1,121 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import api from '../api'
 
-function Login() {
+export default function Login() {
   const navigate = useNavigate()
-  const [erreur, setErreur] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [serverError, setServerError] = useState('')
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm()
 
   const onSubmit = async (data) => {
-    setErreur('')
+    setServerError('')
     try {
-      const response = await api.post('/auth/login', {
-        email: data.email,
-        mot_de_passe: data.mot_de_passe
-      })
-      localStorage.setItem('token', response.data.access_token)
-      navigate('/')
+      const res = await api.post('/auth/login', { email: data.email, mot_de_passe: data.mot_de_passe })
+      const { access_token } = res.data
+      localStorage.setItem('token', access_token)
+      const payload = JSON.parse(atob(access_token.split('.')[1]))
+      if (payload.role === 'admin') navigate('/admin')
+      else if (payload.role === 'instructeur') navigate('/instructeur')
+      else navigate('/dashboard')
     } catch (err) {
-      setErreur(err.response?.data?.detail || 'Erreur de connexion')
+      setServerError(err.response?.data?.detail || 'Email ou mot de passe incorrect.')
     }
   }
 
+  const inp = (err) => `w-full px-4 py-3 rounded-xl text-sm border ${err ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50 focus:border-blue-400'} outline-none text-gray-800 placeholder-gray-400 transition-colors`
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Bandeau RF */}
-      <div style={{backgroundColor: '#1f2d6e'}} className="px-8 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="bg-red-600 text-white font-bold text-sm px-2 py-1">RF</div>
-          <div className="text-white text-xs">
-            <div className="font-bold">RÉPUBLIQUE FRANÇAISE</div>
-            <div className="text-blue-200">Liberté · Égalité · Fraternité</div>
+    <div className="min-h-screen flex bg-gray-50">
+      {/* Panneau gauche */}
+      <div className="w-5/12 bg-blue-900 flex flex-col justify-between p-12 relative overflow-hidden flex-shrink-0">
+        <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-white/[0.04]" />
+        <div className="absolute -bottom-16 -left-16 w-56 h-56 rounded-full bg-white/[0.04]" />
+
+        <Link to="/" className="flex items-center gap-2.5 no-underline relative z-10">
+          <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+            <span className="text-white font-bold text-sm">AP</span>
           </div>
-        </div>
-        <Link to="/register" className="bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2 rounded transition-colors">
-          S'inscrire
+          <span className="text-white font-bold text-base">Aides Publiques</span>
         </Link>
-      </div>
 
-      {/* Navbar */}
-      <div className="bg-white border-b border-gray-200 px-8 py-3 flex items-center justify-between shadow-sm">
-        <a href="/" className="text-blue-900 font-bold text-xl">Aides Publiques</a>
-        <div className="flex items-center gap-8 text-sm">
-          <a href="/" className="text-gray-700 hover:text-blue-900 transition-colors">Accueil</a>
-          <a href="/aides" className="text-gray-700 hover:text-blue-900 transition-colors">Catalogue des aides</a>
-          <a href="/deposer" className="text-gray-700 hover:text-blue-900 transition-colors">Déposer un dossier</a>
+        <div className="relative z-10">
+          <h2 className="text-white text-3xl font-extrabold leading-tight mb-4 tracking-tight">
+            Accédez à vos<br />aides publiques
+          </h2>
+          <p className="text-blue-300 text-sm leading-relaxed mb-8">
+            Gérez vos demandes d'aides publiques depuis votre espace personnel sécurisé.
+          </p>
+          <div className="flex flex-col gap-3">
+            {['127 aides disponibles', '8 500+ dossiers traités', 'Réponse sous 48h garantie'].map((item, i) => (
+              <div key={i} className="flex items-center gap-2.5">
+                <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-xs font-bold">✓</span>
+                </div>
+                <span className="text-blue-200 text-sm">{item}</span>
+              </div>
+            ))}
+          </div>
         </div>
+
+        <p className="text-blue-400 text-xs relative z-10">© 2026 Plateforme Aides Publiques</p>
       </div>
 
-      {/* Formulaire */}
-      <div className="flex items-center justify-center px-4 py-20">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-10 w-full max-w-md">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-gray-900 mb-1">Connexion</h1>
-            <p className="text-gray-500 text-sm">Accédez à votre espace personnel</p>
+      {/* Panneau droit */}
+      <div className="flex-1 flex items-center justify-center px-12 py-12">
+        <div className="w-full max-w-sm">
+          <div className="mb-8">
+            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight mb-1.5">Connexion</h1>
+            <p className="text-sm text-gray-500">Accédez à votre espace personnel</p>
           </div>
 
-          {erreur && (
-            <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-4 py-3 mb-6 text-sm">
-              {erreur}
+          {serverError && (
+            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-5 text-sm text-red-600">
+              {serverError}
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
+          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Adresse email</label>
-              <input
-                type="email"
-                placeholder="vous@exemple.fr"
-                {...register('email', { required: 'Email obligatoire' })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:border-blue-900 text-sm"
-              />
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Adresse email</label>
+              <input type="email" placeholder="votre@email.fr"
+                {...register('email', { required: "L'email est obligatoire" })}
+                className={inp(!!errors.email)} />
               {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-gray-700">Mot de passe</label>
-                <a href="#" className="text-sm text-blue-700 hover:underline">Mot de passe oublié ?</a>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-gray-700">Mot de passe</label>
+                <Link to="/forgot-password" className="text-xs text-blue-600 font-semibold no-underline hover:underline">
+                  Mot de passe oublié ?
+                </Link>
               </div>
-              <input
-                type="password"
-                placeholder="••••••••"
-                {...register('mot_de_passe', { required: 'Mot de passe obligatoire' })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:border-blue-900 text-sm"
-              />
+              <div className="relative">
+                <input type={showPassword ? 'text' : 'password'} placeholder="••••••••"
+                  {...register('mot_de_passe', { required: 'Obligatoire', minLength: { value: 6, message: 'Min 6 caractères' } })}
+                  className={`${inp(!!errors.mot_de_passe)} pr-11`} />
+                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors text-base">
+                  {showPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
               {errors.mot_de_passe && <p className="text-red-500 text-xs mt-1">{errors.mot_de_passe.message}</p>}
             </div>
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              style={{backgroundColor: '#1f2d6e'}}
-              className="hover:opacity-90 text-white font-semibold py-3 rounded-lg transition-opacity mt-2 text-sm">
+            <button type="submit" disabled={isSubmitting}
+              className="w-full py-3 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors mt-1">
               {isSubmitting ? 'Connexion...' : 'Se connecter'}
             </button>
           </form>
 
-          <p className="text-center text-gray-500 text-sm mt-6">
+          <p className="mt-6 text-center text-sm text-gray-500">
             Pas encore de compte ?{' '}
-            <Link to="/register" className="text-blue-700 font-semibold hover:underline">
-              S'inscrire
-            </Link>
+            <Link to="/register" className="text-blue-600 font-semibold no-underline hover:underline">Créer un compte</Link>
           </p>
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="bg-gray-50 border-t border-gray-200 py-6 px-8 text-center">
-        <p className="text-gray-400 text-sm">© 2026 Plateforme Aides Publiques — Tous droits réservés</p>
-      </footer>
     </div>
   )
 }
-
-export default Login

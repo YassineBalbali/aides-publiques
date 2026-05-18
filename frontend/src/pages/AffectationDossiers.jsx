@@ -1,231 +1,173 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { SidebarLayout, IconFolder, IconList, IconUsers, IconLink, IconChart, IconSettings, IconUser } from './SidebarLayout'
+import api from '../api'
+
+const ADMIN_NAV = [
+  { to: '/admin/dossiers', label: 'Dossiers', Icon: IconFolder },
+  { to: '/admin/aides', label: 'Gestion Aides', Icon: IconList },
+  { to: '/admin/utilisateurs', label: 'Utilisateurs', Icon: IconUsers },
+  { to: '/admin/affectations', label: 'Affectations', Icon: IconLink },
+  { to: '/admin/dashboard', label: 'Dashboard', Icon: IconChart },
+  { to: '/admin/parametres', label: 'Paramètres', Icon: IconSettings },
+  { to: '/profil', label: 'Profil', Icon: IconUser },
+]
+
+const STATUT = {
+  brouillon: { label: 'Brouillon', bg: '#f1f5f9', color: '#64748b' },
+  depose: { label: 'Déposé', bg: '#eff6ff', color: '#2563eb' },
+  en_instruction: { label: 'En instruction', bg: '#fffbeb', color: '#d97706' },
+  accepte: { label: 'Accepté', bg: '#ecfdf5', color: '#059669' },
+  refuse: { label: 'Refusé', bg: '#fef2f2', color: '#dc2626' },
+}
+
+// Bug fix: LigneDossier retourne directement les <td>, pas un <tr> imbriqué dans un <tr>
+function LigneDossier({ dossier, instructeurs, onAffecter }) {
+  const [selectVal, setSelectVal] = useState(dossier.instructeur_id || '')
+  const s = STATUT[dossier.statut] || STATUT.brouillon
+
+  const instructeurActuel = instructeurs.find(i => i.id === dossier.instructeur_id)
+
+  return (
+    <>
+      <td style={{ padding: '12px 16px' }}>
+        <span style={{ fontWeight: 700, color: '#2563eb', fontSize: 13 }}>{dossier.numero}</span>
+      </td>
+      <td style={{ padding: '12px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+          <div className="avatar" style={{ width: 30, height: 30, background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', fontSize: 11 }}>
+            {(dossier.demandeur?.prenom?.[0] || '?').toUpperCase()}
+          </div>
+          <div>
+            <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>{dossier.demandeur?.prenom} {dossier.demandeur?.nom}</div>
+            <div style={{ fontSize: 11, color: '#94a3b8' }}>{dossier.demandeur?.email}</div>
+          </div>
+        </div>
+      </td>
+      <td style={{ padding: '12px 16px' }}>
+        <span className="badge" style={{ background: s.bg, color: s.color }}>{s.label}</span>
+      </td>
+      <td style={{ padding: '12px 16px' }}>
+        {instructeurActuel ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <div className="avatar" style={{ width: 24, height: 24, background: '#2563eb', fontSize: 10 }}>
+              {instructeurActuel.prenom?.[0]?.toUpperCase()}
+            </div>
+            <span style={{ fontSize: 12, color: '#059669', fontWeight: 600 }}>{instructeurActuel.prenom} {instructeurActuel.nom}</span>
+          </div>
+        ) : (
+          <span style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>Non affecté</span>
+        )}
+      </td>
+      <td style={{ padding: '12px 16px' }}>
+        <div className="action-row">
+          <select
+            value={selectVal}
+            onChange={e => setSelectVal(e.target.value)}
+            style={{ padding: '6px 10px', borderRadius: 7, fontSize: 12, border: '1px solid #e8ecf4', background: '#f8fafc', color: '#374151', outline: 'none', fontFamily: 'inherit', cursor: 'pointer' }}>
+            <option value="">Choisir un instructeur...</option>
+            {instructeurs.map(i => <option key={i.id} value={i.id}>{i.prenom} {i.nom}</option>)}
+          </select>
+          <button
+            onClick={() => selectVal && onAffecter(dossier.id, selectVal)}
+            disabled={!selectVal}
+            className="btn btn-sm"
+            style={{ background: selectVal ? '#2563eb' : '#f1f5f9', color: selectVal ? '#fff' : '#94a3b8', cursor: selectVal ? 'pointer' : 'not-allowed' }}>
+            Affecter
+          </button>
+        </div>
+      </td>
+    </>
+  )
+}
 
 function AffectationDossiers() {
   const [dossiers, setDossiers] = useState([])
   const [instructeurs, setInstructeurs] = useState([])
   const [chargement, setChargement] = useState(true)
   const [message, setMessage] = useState('')
-  const navigate = useNavigate()
+  const [filtreStatut, setFiltreStatut] = useState('')
+
+  const token = localStorage.getItem('token')
+  const payload = token ? JSON.parse(atob(token.split('.')[1])) : null
 
   useEffect(() => {
-    Promise.all([
-      fetch('http://127.0.0.1:8000/dossiers/').then(r => r.json()),
-      fetch('http://127.0.0.1:8000/auth/utilisateurs').then(r => r.json()),
-    ]).then(([d, u]) => {
-      setDossiers(d)
-      setInstructeurs(u.filter(u => u.role === 'instructeur'))
-      setChargement(false)
-    })
+    Promise.all([api.get('/dossiers/'), api.get('/auth/utilisateurs')])
+      .then(([d, u]) => {
+        setDossiers(d.data)
+        setInstructeurs(u.data.filter(u => u.role === 'instructeur'))
+        setChargement(false)
+      }).catch(() => setChargement(false))
   }, [])
 
   const affecter = async (dossierId, instructeurId) => {
-    if (!instructeurId) return
-    const response = await fetch(
-      `http://127.0.0.1:8000/dossiers/${dossierId}/affecter?instructeur_id=${instructeurId}`,
-      { method: 'PATCH' }
-    )
-    if (response.ok) {
-      const updated = await response.json()
-      setDossiers(prev => prev.map(d => d.id === dossierId ? updated : d))
-      setMessage('✅ Dossier affecté avec succès !')
+    try {
+      await api.patch(`/dossiers/${dossierId}/affecter?instructeur_id=${instructeurId}`)
+      setDossiers(prev => prev.map(d => d.id === dossierId ? { ...d, instructeur_id: parseInt(instructeurId), statut: 'en_instruction' } : d))
+      setMessage('Dossier affecté avec succès !')
       setTimeout(() => setMessage(''), 3000)
-    }
+    } catch { setMessage('Erreur lors de l\'affectation'); setTimeout(() => setMessage(''), 3000) }
   }
 
-  const badgeStatut = (statut) => {
-    const styles = {
-      brouillon: 'bg-gray-100 text-gray-600',
-      depose: 'bg-blue-100 text-blue-700',
-      en_instruction: 'bg-yellow-100 text-yellow-700',
-      accepte: 'bg-green-100 text-green-700',
-      refuse: 'bg-red-100 text-red-600',
-    }
-    const labels = {
-      brouillon: 'Brouillon',
-      depose: 'Déposé',
-      en_instruction: 'En instruction',
-      accepte: 'Accepté',
-      refuse: 'Refusé',
-    }
-    return (
-      <span className={`text-xs font-semibold px-3 py-1 rounded-full ${styles[statut] || 'bg-gray-100'}`}>
-        {labels[statut] || statut}
-      </span>
-    )
-  }
-
-  const dossiersSansInstructeur = dossiers.filter(d => !d.instructeur_id)
-  const dossiersAvecInstructeur = dossiers.filter(d => d.instructeur_id)
+  const dossiersFiltres = dossiers.filter(d => filtreStatut ? d.statut === filtreStatut : true)
+  const nonAffectes = dossiers.filter(d => !d.instructeur_id).length
 
   return (
-    <div style={{backgroundColor: '#1a2744', minHeight: '100vh'}}>
-      {/* Navbar */}
-      <nav className="px-8 py-4 flex items-center justify-between border-b border-blue-800">
-        <Link to="/" className="flex items-center gap-2 text-white font-bold text-xl">
-          <span>🏛️</span><span>AidesPubliques</span>
-        </Link>
-        <div className="flex items-center gap-6 text-white text-sm">
-          <Link to="/admin" className="hover:text-yellow-400">Dossiers</Link>
-          <Link to="/admin/aides" className="hover:text-yellow-400">Gestion Aides</Link>
-          <Link to="/admin/utilisateurs" className="hover:text-yellow-400">Utilisateurs</Link>
-          <Link to="/admin/affectations" className="text-yellow-400 font-semibold">Affectations</Link>
-          <Link to="/dashboard" className="hover:text-yellow-400">Dashboard</Link>
-        </div>
-        <button
-          onClick={() => { localStorage.removeItem('token'); navigate('/') }}
-          className="bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded-lg text-sm">
-          Se déconnecter
-        </button>
-      </nav>
-
-      <div className="px-12 py-10">
-        <h1 className="text-3xl font-bold text-white mb-2">Affectation des dossiers</h1>
-        <p className="text-gray-400 mb-8">Assignez les dossiers aux instructeurs</p>
-
-        {message && (
-          <div className="bg-green-500 text-white px-6 py-3 rounded-xl mb-6 font-semibold">
-            {message}
-          </div>
-        )}
-
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          {[
-            { label: 'Total dossiers', value: dossiers.length, icon: '📁', color: 'text-white' },
-            { label: 'Non affectés', value: dossiersSansInstructeur.length, icon: '⏳', color: 'text-red-400' },
-            { label: 'Affectés', value: dossiersAvecInstructeur.length, icon: '✅', color: 'text-green-400' },
-          ].map((stat, i) => (
-            <div key={i} className="bg-blue-900 rounded-xl p-5 border border-blue-700">
-              <div className="flex items-center gap-2 mb-2">
-                <span>{stat.icon}</span>
-                <p className="text-gray-400 text-sm">{stat.label}</p>
-              </div>
-              <p className={`text-3xl font-bold ${stat.color}`}>{stat.value}</p>
-            </div>
-          ))}
-        </div>
-
-        {instructeurs.length === 0 && (
-          <div className="bg-yellow-900/50 border border-yellow-600 text-yellow-300 px-6 py-4 rounded-xl mb-6">
-            ⚠️ Aucun instructeur trouvé. Créez d'abord un compte avec le rôle <strong>instructeur</strong> dans Gestion Utilisateurs.
-          </div>
-        )}
-
-        {/* Dossiers non affectés */}
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-            <span className="text-red-500 text-xl">⏳</span>
-            <h2 className="text-lg font-bold text-gray-800">Dossiers non affectés ({dossiersSansInstructeur.length})</h2>
-          </div>
-          {chargement ? (
-            <p className="text-gray-400 p-6 text-center">Chargement...</p>
-          ) : dossiersSansInstructeur.length === 0 ? (
-            <p className="text-gray-400 p-6 text-center">🎉 Tous les dossiers sont affectés !</p>
-          ) : (
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Numéro</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Demandeur</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Statut</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Affecter à</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {dossiersSansInstructeur.map(d => (
-                  <tr key={d.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-indigo-600 font-mono font-semibold text-sm">{d.numero}</td>
-                    <td className="px-6 py-4">
-                      <p className="text-gray-800 font-semibold text-sm">{d.demandeur?.prenom} {d.demandeur?.nom}</p>
-                      <p className="text-gray-400 text-xs">{d.demandeur?.email}</p>
-                    </td>
-                    <td className="px-6 py-4 text-gray-400 text-sm">
-                      {new Date(d.cree_le).toLocaleDateString('fr-FR')}
-                    </td>
-                    <td className="px-6 py-4">{badgeStatut(d.statut)}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2 items-center">
-                        <select
-                          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          defaultValue=""
-                          onChange={e => affecter(d.id, e.target.value)}
-                        >
-                          <option value="" disabled>Choisir instructeur...</option>
-                          {instructeurs.map(i => (
-                            <option key={i.id} value={i.id}>
-                              {i.prenom} {i.nom}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        {/* Dossiers affectés */}
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-            <span className="text-green-500 text-xl">✅</span>
-            <h2 className="text-lg font-bold text-gray-800">Dossiers affectés ({dossiersAvecInstructeur.length})</h2>
-          </div>
-          {dossiersAvecInstructeur.length === 0 ? (
-            <p className="text-gray-400 p-6 text-center">Aucun dossier affecté pour le moment</p>
-          ) : (
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Numéro</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Demandeur</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Instructeur</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Statut</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Réaffecter</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {dossiersAvecInstructeur.map(d => {
-                  const instructeurActuel = instructeurs.find(i => i.id === d.instructeur_id)
-                  return (
-                    <tr key={d.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-indigo-600 font-mono font-semibold text-sm">{d.numero}</td>
-                      <td className="px-6 py-4">
-                        <p className="text-gray-800 font-semibold text-sm">{d.demandeur?.prenom} {d.demandeur?.nom}</p>
-                        <p className="text-gray-400 text-xs">{d.demandeur?.email}</p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="bg-blue-100 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full">
-                          🔵 {instructeurActuel ? `${instructeurActuel.prenom} ${instructeurActuel.nom}` : 'Inconnu'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">{badgeStatut(d.statut)}</td>
-                      <td className="px-6 py-4">
-                        <select
-                          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
-                          defaultValue=""
-                          onChange={e => affecter(d.id, e.target.value)}
-                        >
-                          <option value="" disabled>Changer...</option>
-                          {instructeurs.map(i => (
-                            <option key={i.id} value={i.id}>
-                              {i.prenom} {i.nom}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
+    <SidebarLayout navItems={ADMIN_NAV} role="admin" prenom={payload?.prenom || ''} nom={payload?.nom || ''}>
+      <div className="page-header">
+        <h1 className="page-title">Affectations</h1>
+        <p className="page-subtitle">Assignez les dossiers aux instructeurs</p>
       </div>
-    </div>
+
+      {message && <div className="alert-success">✓ {message}</div>}
+
+      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)' }}>
+        {[
+          { label: 'Total dossiers', value: dossiers.length, color: '#2563eb' },
+          { label: 'Non affectés', value: nonAffectes, color: nonAffectes > 0 ? '#d97706' : '#059669' },
+          { label: 'Instructeurs', value: instructeurs.length, color: '#7c3aed' },
+        ].map((s, i) => (
+          <div className="kpi-card" key={i}>
+            <div className="kpi-label">{s.label}</div>
+            <div className="kpi-value" style={{ color: s.color }}>{s.value}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="filter-bar">
+        <select className="select-input" value={filtreStatut} onChange={e => setFiltreStatut(e.target.value)}>
+          <option value="">Tous les statuts</option>
+          <option value="depose">Déposé</option>
+          <option value="en_instruction">En instruction</option>
+          <option value="accepte">Accepté</option>
+          <option value="refuse">Refusé</option>
+        </select>
+        {filtreStatut && (
+          <button className="btn btn-sm btn-danger-sm" onClick={() => setFiltreStatut('')}>✕ Réinitialiser</button>
+        )}
+        <span className="count-badge" style={{ marginLeft: 'auto' }}>{dossiersFiltres.length} dossier(s)</span>
+      </div>
+
+      <div className="card">
+        <table className="data-table">
+          <thead>
+            <tr>
+              {['Numéro', 'Demandeur', 'Statut', 'Instructeur actuel', 'Affecter'].map(col => <th key={col}>{col}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {chargement ? (
+              <tr><td colSpan={5} className="empty-state">Chargement...</td></tr>
+            ) : dossiersFiltres.length === 0 ? (
+              <tr><td colSpan={5}><div className="empty-state"><div className="empty-state-icon">🔗</div>Aucun dossier trouvé</div></td></tr>
+            ) : dossiersFiltres.map((d) => (
+              <tr key={d.id}>
+                <LigneDossier dossier={d} instructeurs={instructeurs} onAffecter={affecter} />
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </SidebarLayout>
   )
 }
 

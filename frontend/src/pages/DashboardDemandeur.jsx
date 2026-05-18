@@ -1,205 +1,156 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import api from '../api'
+import { NotificationIcon } from './Notifications'
 
-function DashboardDemandeur() {
+const STATUT = {
+  brouillon: { label: 'Brouillon', cls: 'bg-gray-100 text-gray-500 border border-gray-200' },
+  depose: { label: 'Déposé', cls: 'bg-blue-50 text-blue-700 border border-blue-100' },
+  en_instruction: { label: 'En instruction', cls: 'bg-amber-50 text-amber-700 border border-amber-100' },
+  accepte: { label: 'Accepté', cls: 'bg-emerald-50 text-emerald-700 border border-emerald-100' },
+  refuse: { label: 'Refusé', cls: 'bg-red-50 text-red-600 border border-red-100' },
+}
+
+function Navbar({ prenom, nom }) {
+  const navigate = useNavigate()
+  const nomPlateforme = localStorage.getItem('plateforme_nom') || 'Aides Publiques'
+  return (
+    <nav className="bg-white border-b border-gray-100 sticky top-0 z-40">
+      <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
+        <Link to="/" className="flex items-center gap-2.5 no-underline">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0"><span className="text-white font-bold text-xs">AP</span></div>
+          <span className="font-bold text-gray-900 text-sm">{nomPlateforme}</span>
+        </Link>
+        <div className="flex items-center gap-0.5">
+          {[{ to: '/', l: 'Accueil' }, { to: '/catalogue', l: 'Catalogue' }, { to: '/deposer', l: 'Déposer' }, { to: '/mon-espace', l: 'Mon espace' }, { to: '/profil', l: 'Profil' }].map(({ to, l }) => (
+            <Link key={to} to={to} className="px-3 py-1.5 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-50 no-underline transition-colors">{l}</Link>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span className="text-xs text-emerald-700 font-semibold">{prenom} {nom}</span>
+          </div>
+          <NotificationIcon />
+          <button onClick={() => { localStorage.removeItem('token'); navigate('/login') }} className="px-3 py-1.5 rounded-lg text-sm font-medium bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 cursor-pointer">Déconnexion</button>
+        </div>
+      </div>
+    </nav>
+  )
+}
+
+export default function DashboardDemandeur() {
   const [dossiers, setDossiers] = useState([])
   const [aides, setAides] = useState([])
   const [chargement, setChargement] = useState(true)
   const navigate = useNavigate()
 
+  const token = localStorage.getItem('token')
+  const payload = token ? JSON.parse(atob(token.split('.')[1])) : null
+  const prenom = payload?.prenom || ''
+  const nom = payload?.nom || ''
+
+  const heure = new Date().getHours()
+  const salut = heure < 12 ? 'Bonjour' : heure < 18 ? 'Bon après-midi' : 'Bonsoir'
+
   useEffect(() => {
-    const token = localStorage.getItem('token')
     if (!token) { navigate('/login'); return }
-    const payload = JSON.parse(atob(token.split('.')[1]))
-    Promise.all([
-      api.get('/dossiers/'),
-      api.get('/aides/'),
-    ]).then(([d, a]) => {
-      setDossiers(d.data.filter(dos => dos.demandeur_id === payload.sub))
-      setAides(a.data.filter(a => a.statut === 'active').slice(0, 3))
-      setChargement(false)
-    }).catch(() => setChargement(false))
+    Promise.all([api.get('/dossiers/'), api.get('/aides/')])
+      .then(([d, a]) => {
+        setDossiers(d.data.filter(dos => dos.demandeur_id === payload.sub))
+        setAides(a.data.filter(aide => aide.statut === 'active').slice(0, 3))
+        setChargement(false)
+      }).catch(() => setChargement(false))
   }, [])
 
-  const badgeStatut = (statut) => {
-    const styles = {
-      brouillon: 'bg-gray-100 text-gray-600',
-      depose: 'bg-blue-100 text-blue-800',
-      en_instruction: 'bg-yellow-100 text-yellow-800',
-      accepte: 'bg-green-100 text-green-800',
-      refuse: 'bg-red-100 text-red-800',
-    }
-    const labels = {
-      brouillon: 'Brouillon',
-      depose: 'Déposé',
-      en_instruction: 'En instruction',
-      accepte: 'Accepté',
-      refuse: 'Refusé',
-    }
-    return (
-      <span className={`text-xs font-semibold px-3 py-1 rounded-full ${styles[statut] || 'bg-gray-100'}`}>
-        {labels[statut] || statut}
-      </span>
-    )
-  }
-
   if (chargement) return (
-    <div style={{backgroundColor: '#f5f5f5', minHeight: '100vh'}} className="flex items-center justify-center">
-      <p className="text-gray-500 text-xl">Chargement...</p>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <Navbar prenom={prenom} nom={nom} />
+      <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
     </div>
   )
 
   return (
-    <div style={{backgroundColor: '#f5f5f5', minHeight: '100vh'}}>
+    <div className="min-h-screen bg-gray-50">
+      <Navbar prenom={prenom} nom={nom} />
 
-      {/* Bandeau RF */}
-      <div style={{backgroundColor: '#1a2b5e'}} className="px-8 py-2 flex items-center gap-3">
-        <div className="bg-red-600 text-white font-bold text-sm px-2 py-1 rounded">RF</div>
-        <span className="text-white text-sm font-semibold">RÉPUBLIQUE FRANÇAISE</span>
-        <span className="text-blue-300 text-xs">Liberté · Égalité · Fraternité</span>
-        <div className="ml-auto">
-          <button onClick={() => { localStorage.removeItem('token'); navigate('/') }}
-            className="text-white text-sm hover:underline">← Se déconnecter</button>
+      <div className="bg-white border-b border-gray-100 px-6 py-7">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">{salut}, {prenom} 👋</h1>
+            <p className="text-sm text-gray-400 mt-1">Suivi de vos demandes d'aides publiques</p>
+          </div>
+          <Link to="/deposer" className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg no-underline hover:bg-blue-700">+ Nouvelle demande</Link>
         </div>
       </div>
 
-      {/* Navbar */}
-      <div className="bg-white border-b border-gray-200 px-8 py-3 flex items-center justify-between">
-        <Link to="/" className="text-blue-900 font-bold text-xl">Aides Publiques</Link>
-        <div className="flex items-center gap-6 text-sm text-gray-600">
-          <Link to="/" className="hover:text-blue-900">Accueil</Link>
-          <Link to="/aides" className="hover:text-blue-900">Catalogue des aides</Link>
-          <Link to="/deposer" className="hover:text-blue-900">Déposer un dossier</Link>
-          <Link to="/mon-espace" className="hover:text-blue-900">Mes dossiers</Link>
-          <Link to="/mon-espace/dashboard" className="text-blue-900 font-semibold border-b-2 border-blue-900 pb-1">Dashboard</Link>
-        </div>
-      </div>
-
-      {/* Header */}
-      <div style={{backgroundColor: '#1a2b5e'}} className="px-8 py-10">
-        <div className="max-w-6xl mx-auto">
-          <h1 className="text-3xl font-bold text-white mb-2">Mon Dashboard</h1>
-          <p className="text-blue-200">Suivi de vos demandes d'aides publiques</p>
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-8 py-8">
-
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        {/* KPIs */}
+        <div className="grid grid-cols-4 gap-4 mb-6">
           {[
-            { label: 'Total dossiers', value: dossiers.length, color: 'text-blue-900', bg: 'bg-blue-50 border-blue-200', icon: '📁' },
-            { label: 'En instruction', value: dossiers.filter(d => d.statut === 'en_instruction').length, color: 'text-yellow-700', bg: 'bg-yellow-50 border-yellow-200', icon: '📋' },
-            { label: 'Acceptés', value: dossiers.filter(d => d.statut === 'accepte').length, color: 'text-green-700', bg: 'bg-green-50 border-green-200', icon: '✅' },
-            { label: 'Refusés', value: dossiers.filter(d => d.statut === 'refuse').length, color: 'text-red-700', bg: 'bg-red-50 border-red-200', icon: '❌' },
-          ].map((stat, i) => (
-            <div key={i} className={`${stat.bg} border rounded-lg p-6 shadow-sm`}>
-              <div className="flex items-center gap-2 mb-2">
-                <span>{stat.icon}</span>
-                <p className="text-gray-500 text-sm">{stat.label}</p>
-              </div>
-              <p className={`text-4xl font-bold ${stat.color}`}>{stat.value}</p>
+            { label: 'Total dossiers', value: dossiers.length, color: 'text-blue-600' },
+            { label: 'En instruction', value: dossiers.filter(d => d.statut === 'en_instruction').length, color: 'text-amber-600' },
+            { label: 'Acceptés', value: dossiers.filter(d => d.statut === 'accepte').length, color: 'text-emerald-600' },
+            { label: 'Refusés', value: dossiers.filter(d => d.statut === 'refuse').length, color: 'text-red-500' },
+          ].map((s, i) => (
+            <div key={i} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
+              <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2">{s.label}</p>
+              <p className={`text-3xl font-extrabold tracking-tight ${s.color}`}>{s.value}</p>
             </div>
           ))}
         </div>
 
-        <div className="grid grid-cols-2 gap-6">
-
-          {/* Derniers dossiers */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="text-gray-900 font-bold text-lg">📁 Derniers dossiers</h2>
-              <Link to="/mon-espace" className="text-blue-700 text-sm hover:underline">Voir tout →</Link>
+        <div className="grid grid-cols-2 gap-5">
+          {/* Dossiers récents */}
+          <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
+              <span className="text-sm font-bold text-gray-900">Dossiers récents</span>
+              <Link to="/mon-espace" className="text-xs font-semibold text-blue-600 no-underline hover:underline">Voir tout →</Link>
             </div>
             {dossiers.length === 0 ? (
-              <div className="p-8 text-center">
-                <p className="text-3xl mb-3">📭</p>
-                <p className="text-gray-400 mb-4">Aucun dossier déposé</p>
-                <Link to="/deposer" className="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded text-sm">
-                  Déposer une demande
-                </Link>
+              <div className="p-10 text-center">
+                <div className="text-3xl mb-3">📋</div>
+                <p className="text-sm text-gray-400 mb-4">Aucun dossier déposé</p>
+                <Link to="/deposer" className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg no-underline hover:bg-blue-700">Déposer une demande</Link>
               </div>
-            ) : (
-              <div className="divide-y divide-gray-100">
-                {dossiers.slice(0, 4).map(d => (
-                  <div key={d.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                    <div>
-                      <p className="text-blue-700 font-mono font-semibold text-sm">{d.numero}</p>
-                      <p className="text-gray-400 text-xs mt-1">
-                        {new Date(d.cree_le).toLocaleDateString('fr-FR')}
-                      </p>
-                    </div>
-                    {badgeStatut(d.statut)}
+            ) : dossiers.slice(0, 5).map((d, i) => {
+              const s = STATUT[d.statut] || STATUT.brouillon
+              return (
+                <div key={d.id} className={`px-5 py-3.5 flex items-center justify-between ${i < Math.min(4, dossiers.length - 1) ? 'border-b border-gray-50' : ''}`}>
+                  <div>
+                    <p className="text-sm font-bold text-blue-600">{d.numero}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{new Date(d.cree_le).toLocaleDateString('fr-FR')}</p>
                   </div>
-                ))}
-              </div>
-            )}
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${s.cls}`}>{s.label}</span>
+                </div>
+              )
+            })}
           </div>
 
           {/* Aides recommandées */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="text-gray-900 font-bold text-lg">💡 Aides recommandées</h2>
-              <Link to="/aides" className="text-blue-700 text-sm hover:underline">Voir tout →</Link>
+          <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
+              <span className="text-sm font-bold text-gray-900">Aides recommandées</span>
+              <Link to="/catalogue" className="text-xs font-semibold text-blue-600 no-underline hover:underline">Voir tout →</Link>
             </div>
-            <div className="divide-y divide-gray-100">
-              {aides.map((a, i) => (
-                <div key={i} className="px-6 py-4 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-gray-900 font-semibold text-sm">{a.titre}</p>
-                    <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full">{a.type_aide}</span>
-                  </div>
-                  <p className="text-gray-400 text-xs mb-3 line-clamp-2">{a.description}</p>
-                  <Link to="/deposer" className="text-blue-700 text-xs font-semibold hover:underline">
-                    Faire une demande →
-                  </Link>
+            {aides.length === 0 ? (
+              <div className="p-10 text-center text-sm text-gray-400">Aucune aide disponible</div>
+            ) : aides.map((a, i) => (
+              <div key={i} className={`px-5 py-4 ${i < aides.length - 1 ? 'border-b border-gray-50' : ''}`}>
+                <div className="flex items-start justify-between mb-1.5">
+                  <p className="text-sm font-bold text-gray-900">{a.titre}</p>
+                  <span className="text-xs font-medium px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-full ml-2 whitespace-nowrap">{a.type_aide}</span>
                 </div>
-              ))}
-            </div>
+                <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mb-2">{a.description}</p>
+                <Link to="/deposer" className="text-xs font-semibold text-blue-600 no-underline hover:underline">Faire une demande →</Link>
+              </div>
+            ))}
           </div>
         </div>
-
-        {/* Footer */}
-        <footer className="border-t border-gray-200 pt-10 mt-10">
-          <div className="grid grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="bg-red-600 text-white font-bold text-xs px-1 py-1 rounded">RF</div>
-                <span className="text-gray-700 font-semibold text-sm">RÉPUBLIQUE FRANÇAISE</span>
-              </div>
-              <p className="text-gray-400 text-xs">Plateforme de gestion et suivi des aides publiques.</p>
-            </div>
-            <div>
-              <h3 className="text-gray-700 font-semibold text-sm mb-3">Navigation</h3>
-              <div className="flex flex-col gap-2">
-                <Link to="/aides" className="text-gray-400 hover:text-gray-700 text-xs">Catalogue des aides</Link>
-                <Link to="/deposer" className="text-gray-400 hover:text-gray-700 text-xs">Déposer un dossier</Link>
-                <Link to="/mon-espace" className="text-gray-400 hover:text-gray-700 text-xs">Suivre mon dossier</Link>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-gray-700 font-semibold text-sm mb-3">Espace pro</h3>
-              <div className="flex flex-col gap-2">
-                <Link to="/instructeur" className="text-gray-400 hover:text-gray-700 text-xs">Espace instructeur</Link>
-                <Link to="/admin" className="text-gray-400 hover:text-gray-700 text-xs">Administration</Link>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-gray-700 font-semibold text-sm mb-3">Informations</h3>
-              <div className="flex flex-col gap-2">
-                <a href="#" className="text-gray-400 hover:text-gray-700 text-xs">Mentions légales</a>
-                <a href="#" className="text-gray-400 hover:text-gray-700 text-xs">Accessibilité</a>
-              </div>
-            </div>
-          </div>
-          <div className="border-t border-gray-200 pt-4 text-center">
-            <p className="text-gray-400 text-xs">© 2026 Plateforme Aides Publiques — Tous droits réservés</p>
-          </div>
-        </footer>
       </div>
+      <footer className="border-t border-gray-100 py-5 text-center mt-8">
+        <p className="text-xs text-gray-400">© 2026 Plateforme Aides Publiques</p>
+      </footer>
     </div>
   )
 }
-
-export default DashboardDemandeur

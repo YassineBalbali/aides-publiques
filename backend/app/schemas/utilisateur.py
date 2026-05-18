@@ -17,6 +17,10 @@ class UtilisateurResponse(BaseModel):
     prenom: Optional[str] = None
     role: RoleUtilisateur
     est_actif: bool
+    photo: Optional[str] = None
+    type_beneficiaire: Optional[str] = None
+    secteur_activite: Optional[str] = None
+    localisation: Optional[str] = None
     cree_le: datetime
 
     class Config:

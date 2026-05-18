@@ -21,4 +21,7 @@ class Utilisateur(Base):
     role = Column(Enum(RoleUtilisateur), default=RoleUtilisateur.demandeur)
     est_actif = Column(Boolean, default=True)
     photo = Column(String(500), nullable=True)
+    type_beneficiaire = Column(String(50), nullable=True)
+    secteur_activite = Column(String(100), nullable=True)
+    localisation = Column(String(200), nullable=True)
     cree_le = Column(DateTime, default=lambda: datetime.now(timezone.utc))

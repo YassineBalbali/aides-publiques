@@ -1,300 +1,208 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import ProfilAdmin from './ProfilAdmin'
+import api from '../api'
+import { NotificationIcon } from './Notifications'
 
-function Profil() {
+const ROLE_LABEL = { admin: 'Administrateur', instructeur: 'Instructeur', demandeur: 'Demandeur' }
+const ROLE_CLS = { admin: 'bg-red-50 text-red-600 border border-red-100', instructeur: 'bg-blue-50 text-blue-700 border border-blue-100', demandeur: 'bg-emerald-50 text-emerald-700 border border-emerald-100' }
+
+function Navbar() {
+  const navigate = useNavigate()
+  const token = localStorage.getItem('token')
+  const payload = token ? JSON.parse(atob(token.split('.')[1])) : null
+  const nomPlateforme = localStorage.getItem('plateforme_nom') || 'Aides Publiques'
+  return (
+    <nav className="bg-white border-b border-gray-100 sticky top-0 z-40">
+      <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
+        <Link to="/" className="flex items-center gap-2.5 no-underline">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0"><span className="text-white font-bold text-xs">AP</span></div>
+          <span className="font-bold text-gray-900 text-sm">{nomPlateforme}</span>
+        </Link>
+        <div className="flex items-center gap-0.5">
+          {[{ to: '/', l: 'Accueil' }, { to: '/catalogue', l: 'Catalogue' }, { to: '/deposer', l: 'Déposer' }, { to: '/mon-espace', l: 'Mon espace' }, { to: '/profil', l: 'Profil' }].map(({ to, l }) => (
+            <Link key={to} to={to} className={`px-3 py-1.5 rounded-lg text-sm font-medium no-underline transition-colors ${to === '/profil' ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'}`}>{l}</Link>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span className="text-xs text-emerald-700 font-semibold">{payload?.prenom} {payload?.nom}</span>
+          </div>
+          <NotificationIcon />
+          <button onClick={() => { localStorage.removeItem('token'); navigate('/login') }} className="px-3 py-1.5 rounded-lg text-sm font-medium bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 cursor-pointer">Déconnexion</button>
+        </div>
+      </div>
+    </nav>
+  )
+}
+
+export default function Profil() {
+  const token = localStorage.getItem('token')
+  const payload = token ? JSON.parse(atob(token.split('.')[1])) : null
+  const role = payload?.role
+  if (role === 'admin') return <ProfilAdmin />
+
+  const userId = payload?.sub
+  const navigate = useNavigate()
   const [profil, setProfil] = useState(null)
-  const [form, setForm] = useState({ nom: '', prenom: '', email: '' })
+  const [form, setForm] = useState({ nom: '', prenom: '', email: '', type_beneficiaire: '', secteur_activite: '', localisation: '' })
   const [mdpForm, setMdpForm] = useState({ ancien_mot_de_passe: '', nouveau_mot_de_passe: '', confirmer: '' })
   const [message, setMessage] = useState('')
   const [erreur, setErreur] = useState('')
   const [chargement, setChargement] = useState(true)
-  const navigate = useNavigate()
-
-  const token = localStorage.getItem('token')
-  const payload = token ? JSON.parse(atob(token.split('.')[1])) : null
-  const userId = payload?.sub
-  const role = payload?.role
+  const [locSuggestions, setLocSuggestions] = useState([])
 
   useEffect(() => {
     if (!token) { navigate('/login'); return }
-    fetch(`http://127.0.0.1:8000/auth/profil/${userId}`)
-      .then(r => r.json())
-      .then(data => {
-        setProfil(data)
-        setForm({ nom: data.nom || '', prenom: data.prenom || '', email: data.email || '' })
+    api.get(`/auth/profil/${userId}`)
+      .then(r => {
+        setProfil({ ...r.data, photo: localStorage.getItem('user_photo') || r.data.photo || null })
+        setForm({ nom: r.data.nom || '', prenom: r.data.prenom || '', email: r.data.email || '', type_beneficiaire: r.data.type_beneficiaire || '', secteur_activite: r.data.secteur_activite || '', localisation: r.data.localisation || '' })
         setChargement(false)
-      })
-      .catch(() => setChargement(false))
+      }).catch(() => setChargement(false))
   }, [])
 
-  const sauvegarderProfil = async () => {
-    setMessage(''); setErreur('')
-    const response = await fetch(`http://127.0.0.1:8000/auth/profil/${userId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form)
-    })
-    if (response.ok) {
-      setMessage('Profil mis à jour avec succès !')
-      setTimeout(() => setMessage(''), 3000)
-    } else {
-      setErreur('Erreur lors de la mise à jour')
-    }
+  const showMsg = (msg, isErr = false) => {
+    if (isErr) { setErreur(msg); setMessage('') } else { setMessage(msg); setErreur('') }
+    setTimeout(() => { setMessage(''); setErreur('') }, 3000)
   }
 
-  const changerMotDePasse = async () => {
-    setMessage(''); setErreur('')
-    if (mdpForm.nouveau_mot_de_passe !== mdpForm.confirmer) {
-      setErreur('Les mots de passe ne correspondent pas')
-      return
-    }
-    if (mdpForm.nouveau_mot_de_passe.length < 6) {
-      setErreur('Le mot de passe doit contenir au moins 6 caractères')
-      return
-    }
-    const response = await fetch(`http://127.0.0.1:8000/auth/profil/${userId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ancien_mot_de_passe: mdpForm.ancien_mot_de_passe,
-        nouveau_mot_de_passe: mdpForm.nouveau_mot_de_passe
-      })
-    })
-    if (response.ok) {
-      setMessage('Mot de passe changé avec succès !')
-      setMdpForm({ ancien_mot_de_passe: '', nouveau_mot_de_passe: '', confirmer: '' })
-      setTimeout(() => setMessage(''), 3000)
-    } else {
-      const data = await response.json()
-      setErreur(data.detail || 'Erreur lors du changement de mot de passe')
-    }
+  const sauvegarder = async () => {
+    try { await api.put(`/auth/profil/${userId}`, form); showMsg('Profil mis à jour !') }
+    catch (err) { showMsg(err.response?.data?.detail || 'Erreur', true) }
+  }
+
+  const changerMdp = async () => {
+    if (mdpForm.nouveau_mot_de_passe !== mdpForm.confirmer) { showMsg('Les mots de passe ne correspondent pas', true); return }
+    if (mdpForm.nouveau_mot_de_passe.length < 6) { showMsg('Minimum 6 caractères', true); return }
+    try {
+      await api.put(`/auth/profil/${userId}`, { ancien_mot_de_passe: mdpForm.ancien_mot_de_passe, nouveau_mot_de_passe: mdpForm.nouveau_mot_de_passe })
+      showMsg('Mot de passe changé !'); setMdpForm({ ancien_mot_de_passe: '', nouveau_mot_de_passe: '', confirmer: '' })
+    } catch (err) { showMsg(err.response?.data?.detail || 'Erreur', true) }
   }
 
   const uploadPhoto = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    const formData = new FormData()
-    formData.append('file', file)
-    const response = await fetch(`http://127.0.0.1:8000/auth/profil/${userId}/photo`, {
-      method: 'POST',
-      body: formData
-    })
-    const data = await response.json()
-    if (data.photo) {
-      setProfil(prev => ({ ...prev, photo: data.photo }))
-      setMessage('Photo mise à jour avec succès !')
-      setTimeout(() => setMessage(''), 3000)
-    }
+    const file = e.target.files[0]; if (!file) return
+    const fd = new FormData(); fd.append('file', file)
+    try {
+      const res = await api.post(`/auth/profil/${userId}/photo`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      localStorage.setItem('user_photo', res.data.photo); setProfil(prev => ({ ...prev, photo: res.data.photo })); showMsg('Photo mise à jour !')
+    } catch { showMsg('Erreur photo', true) }
   }
 
-  const roleLabel = { admin: 'Administrateur', instructeur: 'Instructeur', demandeur: 'Demandeur' }
-  const roleBadge = { admin: 'bg-red-100 text-red-700', instructeur: 'bg-blue-100 text-blue-700', demandeur: 'bg-green-100 text-green-700' }
-  const lienRetour = role === 'admin' ? '/admin' : role === 'instructeur' ? '/instructeur' : '/mon-espace'
+  const handleLoc = async (e) => {
+    const val = e.target.value; setForm({ ...form, localisation: val })
+    if (val.length >= 2) {
+      try { const r = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(val)}&limit=5`); const d = await r.json(); setLocSuggestions(d.features || []) }
+      catch { setLocSuggestions([]) }
+    } else setLocSuggestions([])
+  }
 
-  if (chargement) return (
-    <div style={{backgroundColor: '#f5f5f5', minHeight: '100vh'}} className="flex items-center justify-center">
-      <p className="text-gray-500 text-xl">Chargement...</p>
-    </div>
-  )
+  const inp = `w-full px-3 py-2.5 rounded-xl text-sm border border-gray-200 outline-none focus:border-blue-400 bg-gray-50 text-gray-800 font-medium transition-colors`
+
+  if (chargement) return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><Navbar /><div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>
 
   return (
-    <div style={{backgroundColor: '#f5f5f5', minHeight: '100vh'}}>
-      {/* Bandeau RF */}
-      <div style={{backgroundColor: '#1a2b5e'}} className="px-8 py-2 flex items-center gap-3">
-        <div className="bg-red-600 text-white font-bold text-sm px-2 py-1 rounded">RF</div>
-        <span className="text-white text-sm font-semibold">RÉPUBLIQUE FRANÇAISE</span>
-        <span className="text-blue-300 text-xs">Liberté · Égalité · Fraternité</span>
-        <div className="ml-auto flex items-center gap-4 text-white text-sm">
-          <button
-            onClick={() => { localStorage.removeItem('token'); navigate('/') }}
-            className="hover:underline">
-            ← Se déconnecter
-          </button>
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      <div className="bg-white border-b border-gray-100 px-6 py-7">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Mon profil</h1>
+          <p className="text-sm text-gray-400 mt-1">Gérez vos informations personnelles</p>
         </div>
       </div>
 
-      {/* Navbar */}
-      <div className="bg-white border-b border-gray-200 px-8 py-3 flex items-center justify-between">
-        <Link to="/" className="text-blue-900 font-bold text-xl">Aides Publiques</Link>
-        <div className="flex items-center gap-6 text-sm text-gray-600">
-          <Link to="/" className="hover:text-blue-900">Accueil</Link>
-          <Link to="/aides" className="hover:text-blue-900">Catalogue des aides</Link>
-          <Link to="/deposer" className="hover:text-blue-900">Déposer un dossier</Link>
-          <Link to={lienRetour} className="hover:text-blue-900">Mon espace</Link>
-          <Link to="/profil" className="bg-blue-900 text-white px-4 py-2 rounded font-semibold">Mon profil</Link>
-        </div>
-      </div>
+      <div className="max-w-4xl mx-auto px-6 py-6">
+        {message && <div className="mb-4 px-4 py-3 bg-emerald-50 border border-emerald-100 rounded-xl text-sm font-semibold text-emerald-700">✓ {message}</div>}
+        {erreur && <div className="mb-4 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm font-semibold text-red-600">✕ {erreur}</div>}
 
-      {/* Header avec photo */}
-      <div style={{backgroundColor: '#1a2b5e'}} className="px-8 py-10">
-        <div className="max-w-4xl mx-auto flex items-center gap-6">
-          
-          {/* Photo de profil */}
-          <div className="relative">
-            <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center text-blue-900 font-bold text-3xl shadow-lg overflow-hidden">
-              {profil?.photo ? (
-                <img src={profil.photo} alt="Photo de profil" className="w-full h-full object-cover" />
-              ) : (
-                (profil?.prenom?.[0] || profil?.email?.[0] || '?').toUpperCase()
-              )}
+        {/* Avatar */}
+        <div className="bg-white border border-gray-100 rounded-xl p-5 mb-5 shadow-sm flex items-center gap-5">
+          <div className="relative flex-shrink-0">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center overflow-hidden">
+              {profil?.photo ? <img src={profil.photo} alt="" className="w-full h-full object-cover" /> : <span className="text-white font-extrabold text-2xl">{(profil?.prenom?.[0] || '?').toUpperCase()}</span>}
             </div>
-            <label className="absolute bottom-0 right-0 bg-yellow-400 hover:bg-yellow-500 rounded-full w-8 h-8 flex items-center justify-center cursor-pointer shadow-md transition-colors">
-              <span className="text-sm">📷</span>
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="hidden"
-                onChange={uploadPhoto}
-              />
+            <label className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-blue-600 border-2 border-white flex items-center justify-center cursor-pointer">
+              <span className="text-white text-xs">✎</span>
+              <input type="file" accept="image/*" className="hidden" onChange={uploadPhoto} />
             </label>
           </div>
-
           <div>
-            <h1 className="text-3xl font-bold text-white">{profil?.prenom} {profil?.nom}</h1>
-            <p className="text-blue-200 mt-1">{profil?.email}</p>
-            <span className={`mt-2 inline-block text-xs font-semibold px-3 py-1 rounded-full ${roleBadge[role]}`}>
-              {roleLabel[role] || role}
-            </span>
-            <p className="text-blue-300 text-xs mt-2">📷 Cliquez sur l'icône pour changer votre photo</p>
+            <p className="text-lg font-extrabold text-gray-900 tracking-tight">{profil?.prenom} {profil?.nom}</p>
+            <p className="text-sm text-gray-500 mt-0.5">{profil?.email}</p>
+            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full inline-block mt-2 ${ROLE_CLS[role] || 'bg-gray-100 text-gray-500 border border-gray-200'}`}>{ROLE_LABEL[role]}</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-5">
+          {/* Informations */}
+          <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
+            <p className="text-sm font-bold text-gray-900 mb-5">Informations personnelles</p>
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="block text-xs font-semibold text-gray-600 mb-1.5">Prénom</label><input className={inp} value={form.prenom} onChange={e => setForm({ ...form, prenom: e.target.value })} /></div>
+                <div><label className="block text-xs font-semibold text-gray-600 mb-1.5">Nom</label><input className={inp} value={form.nom} onChange={e => setForm({ ...form, nom: e.target.value })} /></div>
+              </div>
+              <div><label className="block text-xs font-semibold text-gray-600 mb-1.5">Email</label><input className={inp} value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Type de bénéficiaire</label>
+                <select className={inp} value={form.type_beneficiaire} onChange={e => setForm({ ...form, type_beneficiaire: e.target.value })}>
+                  <option value="">Sélectionner...</option><option value="particulier">Particulier</option><option value="entreprise">Entreprise</option><option value="association">Association</option><option value="collectivite">Collectivité</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Secteur d'activité</label>
+                <select className={inp} value={form.secteur_activite} onChange={e => setForm({ ...form, secteur_activite: e.target.value })}>
+                  <option value="">Sélectionner...</option><option value="agriculture">Agriculture</option><option value="industrie">Industrie</option><option value="commerce">Commerce</option><option value="sante">Santé</option><option value="education">Éducation</option><option value="numerique">Numérique</option><option value="batiment">Bâtiment</option><option value="autre">Autre</option>
+                </select>
+              </div>
+              <div className="relative">
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Localisation</label>
+                <input className={inp} value={form.localisation} onChange={handleLoc} placeholder="Ex: Paris, Lyon..." autoComplete="off" />
+                {locSuggestions.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden mt-1">
+                    {locSuggestions.map((s, i) => (
+                      <button key={i} type="button" onClick={() => { setForm({ ...form, localisation: s.properties.label }); setLocSuggestions([]) }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-50 last:border-0 transition-colors">
+                        {s.properties.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button onClick={sauvegarder} className="w-full py-2.5 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition-colors">Sauvegarder</button>
+            </div>
+          </div>
+
+          {/* Mot de passe */}
+          <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
+            <p className="text-sm font-bold text-gray-900 mb-5">Changer le mot de passe</p>
+            <div className="flex flex-col gap-4">
+              {[{ label: 'Mot de passe actuel', key: 'ancien_mot_de_passe' }, { label: 'Nouveau mot de passe', key: 'nouveau_mot_de_passe' }, { label: 'Confirmer', key: 'confirmer' }].map(({ label, key }) => (
+                <div key={key}>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">{label}</label>
+                  <input type="password" className={inp} placeholder="••••••••" value={mdpForm[key]} onChange={e => setMdpForm({ ...mdpForm, [key]: e.target.value })} />
+                </div>
+              ))}
+              <button onClick={changerMdp} className="w-full py-2.5 border border-gray-200 text-gray-700 text-sm font-bold rounded-xl hover:bg-gray-50 transition-colors">Changer le mot de passe</button>
+            </div>
+
+            <div className="mt-6 pt-5 border-t border-gray-100">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">Informations du compte</p>
+              {[{ l: 'Rôle', v: ROLE_LABEL[role] }, { l: 'ID', v: userId?.slice(0, 16) + '...' }].map((s, i) => (
+                <div key={i} className="flex items-center justify-between py-2">
+                  <span className="text-xs text-gray-400">{s.l}</span>
+                  <span className={`text-xs font-bold text-gray-700 ${i === 1 ? 'font-mono' : ''}`}>{s.v}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
-
-      <div className="max-w-4xl mx-auto py-10 px-4">
-        {message && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-6 py-3 rounded-lg mb-6 flex items-center gap-2">
-            <span>✅</span> {message}
-          </div>
-        )}
-        {erreur && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-3 rounded-lg mb-6 flex items-center gap-2">
-            <span>❌</span> {erreur}
-          </div>
-        )}
-
-        {/* Informations personnelles */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <span>📝</span> Informations personnelles
-          </h2>
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Prénom</label>
-              <input value={form.prenom} onChange={e => setForm({...form, prenom: e.target.value})}
-                className="w-full border border-gray-300 rounded px-4 py-3 focus:outline-none focus:border-blue-500"
-                placeholder="Votre prénom" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
-              <input value={form.nom} onChange={e => setForm({...form, nom: e.target.value})}
-                className="w-full border border-gray-300 rounded px-4 py-3 focus:outline-none focus:border-blue-500"
-                placeholder="Votre nom" />
-            </div>
-          </div>
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input value={form.email} onChange={e => setForm({...form, email: e.target.value})}
-              className="w-full border border-gray-300 rounded px-4 py-3 focus:outline-none focus:border-blue-500"
-              placeholder="Votre email" />
-          </div>
-          <button onClick={sauvegarderProfil}
-            className="bg-blue-900 hover:bg-blue-800 text-white font-semibold px-8 py-3 rounded transition-colors">
-            💾 Sauvegarder les modifications
-          </button>
-        </div>
-
-        {/* Changer mot de passe */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <span>🔐</span> Changer le mot de passe
-          </h2>
-          <div className="space-y-4 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Ancien mot de passe</label>
-              <input type="password" value={mdpForm.ancien_mot_de_passe}
-                onChange={e => setMdpForm({...mdpForm, ancien_mot_de_passe: e.target.value})}
-                className="w-full border border-gray-300 rounded px-4 py-3 focus:outline-none focus:border-blue-500"
-                placeholder="••••••••" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nouveau mot de passe</label>
-              <input type="password" value={mdpForm.nouveau_mot_de_passe}
-                onChange={e => setMdpForm({...mdpForm, nouveau_mot_de_passe: e.target.value})}
-                className="w-full border border-gray-300 rounded px-4 py-3 focus:outline-none focus:border-blue-500"
-                placeholder="••••••••" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Confirmer le mot de passe</label>
-              <input type="password" value={mdpForm.confirmer}
-                onChange={e => setMdpForm({...mdpForm, confirmer: e.target.value})}
-                className="w-full border border-gray-300 rounded px-4 py-3 focus:outline-none focus:border-blue-500"
-                placeholder="••••••••" />
-            </div>
-          </div>
-          <button onClick={changerMotDePasse}
-            className="bg-red-600 hover:bg-red-700 text-white font-semibold px-8 py-3 rounded transition-colors">
-            🔐 Changer le mot de passe
-          </button>
-        </div>
-
-        {/* Infos compte */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-10">
-          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <span>ℹ️</span> Informations du compte
-          </h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-gray-500 text-xs mb-1">Rôle</p>
-              <p className="font-semibold text-gray-800">{roleLabel[role] || role}</p>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-gray-500 text-xs mb-1">Identifiant</p>
-              <p className="font-mono text-gray-600 text-xs truncate">{userId}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <footer className="border-t border-gray-200 pt-10">
-          <div className="grid grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="bg-red-600 text-white font-bold text-xs px-1 py-1 rounded">RF</div>
-                <span className="text-gray-700 font-semibold text-sm">RÉPUBLIQUE FRANÇAISE</span>
-              </div>
-              <p className="text-gray-400 text-xs">Plateforme de gestion et suivi des aides publiques.</p>
-            </div>
-            <div>
-              <h3 className="text-gray-700 font-semibold text-sm mb-3">Navigation</h3>
-              <div className="flex flex-col gap-2">
-                <Link to="/aides" className="text-gray-400 hover:text-gray-700 text-xs">Catalogue des aides</Link>
-                <Link to="/deposer" className="text-gray-400 hover:text-gray-700 text-xs">Déposer un dossier</Link>
-                <Link to="/mon-espace" className="text-gray-400 hover:text-gray-700 text-xs">Suivre mon dossier</Link>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-gray-700 font-semibold text-sm mb-3">Espace pro</h3>
-              <div className="flex flex-col gap-2">
-                <Link to="/instructeur" className="text-gray-400 hover:text-gray-700 text-xs">Espace instructeur</Link>
-                <Link to="/admin" className="text-gray-400 hover:text-gray-700 text-xs">Administration</Link>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-gray-700 font-semibold text-sm mb-3">Informations</h3>
-              <div className="flex flex-col gap-2">
-                <a href="#" className="text-gray-400 hover:text-gray-700 text-xs">Mentions légales</a>
-                <a href="#" className="text-gray-400 hover:text-gray-700 text-xs">Politique de confidentialité</a>
-                <a href="#" className="text-gray-400 hover:text-gray-700 text-xs">Accessibilité</a>
-              </div>
-            </div>
-          </div>
-          <div className="border-t border-gray-200 pt-4 text-center">
-            <p className="text-gray-400 text-xs">© 2026 Plateforme Aides Publiques — Tous droits réservés</p>
-          </div>
-        </footer>
-      </div>
+      <footer className="border-t border-gray-100 py-5 text-center mt-8">
+        <p className="text-xs text-gray-400">© 2026 Plateforme Aides Publiques</p>
+      </footer>
     </div>
   )
 }
-
-export default Profil

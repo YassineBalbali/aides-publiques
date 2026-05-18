@@ -1,273 +1,153 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { SidebarLayout, IconFolder, IconChart } from './SidebarLayout'
 import api from '../api'
+
+const INSTRUCTEUR_NAV = [
+  { to: '/instructeur', label: 'Mes dossiers', Icon: IconFolder },
+  { to: '/instructeur/dashboard', label: 'Dashboard', Icon: IconChart },
+]
+
+function BarH({ label, value, max, color }) {
+  const pct = max > 0 ? Math.round((value / max) * 100) : 0
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: 12 }}>
+        <span style={{ color: '#64748b' }}>{label}</span>
+        <span style={{ color: '#0f172a', fontWeight: 700 }}>{value} <span style={{ color: '#94a3b8', fontWeight: 400 }}>({pct}%)</span></span>
+      </div>
+      <div style={{ background: '#f1f5f9', borderRadius: 100, height: 6 }}>
+        <div style={{ width: `${pct}%`, height: 6, borderRadius: 100, background: color, transition: 'width 0.5s ease' }} />
+      </div>
+    </div>
+  )
+}
 
 function DashboardInstructeur() {
   const [dossiers, setDossiers] = useState([])
   const [chargement, setChargement] = useState(true)
   const navigate = useNavigate()
 
+  const token = localStorage.getItem('token')
+  const payload = token ? JSON.parse(atob(token.split('.')[1])) : null
+
   useEffect(() => {
-    const token = localStorage.getItem('token')
     if (!token) { navigate('/login'); return }
-    const payload = JSON.parse(atob(token.split('.')[1]))
-    const instructeurId = payload.sub
     api.get('/dossiers/')
-      .then(r => {
-        setDossiers(r.data.filter(d => d.instructeur_id === instructeurId))
-        setChargement(false)
-      })
+      .then(r => { setDossiers(r.data.filter(d => d.instructeur_id === payload.sub)); setChargement(false) })
       .catch(() => setChargement(false))
   }, [])
 
   const enAttente = dossiers.filter(d => d.statut === 'depose' || d.statut === 'brouillon')
   const enInstruction = dossiers.filter(d => d.statut === 'en_instruction')
   const traites = dossiers.filter(d => d.statut === 'accepte' || d.statut === 'refuse')
-
-  const prioritaires = [...enAttente].sort((a, b) =>
-    new Date(a.cree_le) - new Date(b.cree_le)
-  ).slice(0, 5)
-
-  const joursAttente = (date) => {
-    const diff = new Date() - new Date(date)
-    return Math.floor(diff / (1000 * 60 * 60 * 24))
-  }
-
-  const tauxTraitement = dossiers.length
-    ? Math.round(traites.length / dossiers.length * 100)
-    : 0
-
-  const badgeStatut = (statut) => {
-    const styles = {
-      brouillon: 'bg-gray-100 text-gray-600',
-      depose: 'bg-blue-100 text-blue-800',
-      en_instruction: 'bg-yellow-100 text-yellow-800',
-      accepte: 'bg-green-100 text-green-800',
-      refuse: 'bg-red-100 text-red-800',
-    }
-    const labels = {
-      brouillon: 'Brouillon',
-      depose: 'Déposé',
-      en_instruction: 'En instruction',
-      accepte: 'Accepté',
-      refuse: 'Refusé',
-    }
-    return (
-      <span className={`text-xs font-semibold px-3 py-1 rounded-full ${styles[statut] || 'bg-gray-100'}`}>
-        {labels[statut] || statut}
-      </span>
-    )
-  }
-
-  const urgenceBadge = (jours) => {
-    if (jours > 10) return <span className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-1 rounded-full">Urgent {jours}j</span>
-    if (jours > 5) return <span className="text-xs font-bold text-orange-600 bg-orange-50 border border-orange-200 px-2 py-1 rounded-full">{jours}j</span>
-    return <span className="text-xs font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-1 rounded-full">{jours}j</span>
-  }
+  const prioritaires = [...enAttente].sort((a, b) => new Date(a.cree_le) - new Date(b.cree_le)).slice(0, 5)
+  const tauxTraitement = dossiers.length ? Math.round(traites.length / dossiers.length * 100) : 0
+  const joursAttente = (date) => Math.floor((new Date() - new Date(date)) / (1000 * 60 * 60 * 24))
 
   if (chargement) return (
-    <div style={{backgroundColor: '#f5f5f5', minHeight: '100vh'}} className="flex items-center justify-center">
-      <p className="text-gray-500 text-xl">Chargement...</p>
-    </div>
+    <SidebarLayout navItems={INSTRUCTEUR_NAV} role="instructeur" prenom={payload?.prenom || ''} nom={payload?.nom || ''}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50vh', color: '#94a3b8', fontSize: 14 }}>Chargement...</div>
+    </SidebarLayout>
   )
 
   return (
-    <div style={{backgroundColor: '#f5f5f5', minHeight: '100vh'}}>
-
-      {/* Bandeau RF */}
-      <div style={{backgroundColor: '#1a2b5e'}} className="px-8 py-2 flex items-center gap-3">
-        <div className="bg-red-600 text-white font-bold text-sm px-2 py-1 rounded">RF</div>
-        <span className="text-white text-sm font-semibold">RÉPUBLIQUE FRANÇAISE</span>
-        <span className="text-blue-300 text-xs">Liberté · Égalité · Fraternité</span>
-        <div className="ml-auto">
-          <button onClick={() => { localStorage.removeItem('token'); navigate('/') }}
-            className="text-white text-sm hover:underline">← Se déconnecter</button>
-        </div>
+    <SidebarLayout navItems={INSTRUCTEUR_NAV} role="instructeur" prenom={payload?.prenom || ''} nom={payload?.nom || ''}>
+      <div className="page-header">
+        <h1 className="page-title">Dashboard</h1>
+        <p className="page-subtitle">Suivi et traitement de vos dossiers</p>
       </div>
 
-      {/* Navbar */}
-      <div className="bg-white border-b border-gray-200 px-8 py-3 flex items-center justify-between">
-        <Link to="/" className="text-blue-900 font-bold text-xl">Aides Publiques</Link>
-        <div className="flex items-center gap-6 text-sm text-gray-600">
-          <Link to="/" className="hover:text-blue-900">Accueil</Link>
-          <Link to="/instructeur" className="hover:text-blue-900">Mes dossiers</Link>
-          <Link to="/instructeur/dashboard" className="text-blue-900 font-semibold border-b-2 border-blue-900 pb-1">Dashboard</Link>
-        </div>
-      </div>
-
-      {/* Header */}
-      <div style={{backgroundColor: '#1a2b5e'}} className="px-8 py-10">
-        <div className="max-w-6xl mx-auto">
-          <h1 className="text-3xl font-bold text-white mb-2">Dashboard Instructeur</h1>
-          <p className="text-blue-200">Suivi et traitement des dossiers en cours</p>
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-8 py-8">
-
-        {/* KPIs */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          {[
-            { label: 'En attente', value: enAttente.length, color: 'text-blue-900', bg: 'bg-blue-50 border-blue-200', sub: 'Dossiers à traiter', icon: '⏳' },
-            { label: 'En instruction', value: enInstruction.length, color: 'text-yellow-700', bg: 'bg-yellow-50 border-yellow-200', sub: 'En cours', icon: '📋' },
-            { label: 'Traités', value: traites.length, color: 'text-green-700', bg: 'bg-green-50 border-green-200', sub: `${dossiers.filter(d => d.statut === 'accepte').length} acceptés · ${dossiers.filter(d => d.statut === 'refuse').length} refusés`, icon: '✅' },
-            { label: 'Taux traitement', value: `${tauxTraitement}%`, color: 'text-purple-700', bg: 'bg-purple-50 border-purple-200', sub: `Sur ${dossiers.length} dossiers`, icon: '📈' },
-          ].map((kpi, i) => (
-            <div key={i} className={`${kpi.bg} border rounded-lg p-6 shadow-sm`}>
-              <div className="flex items-center gap-2 mb-2">
-                <span>{kpi.icon}</span>
-                <p className="text-gray-500 text-sm">{kpi.label}</p>
-              </div>
-              <p className={`text-4xl font-bold ${kpi.color} mb-1`}>{kpi.value}</p>
-              <p className="text-gray-400 text-xs">{kpi.sub}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-2 gap-6 mb-6">
-
-          {/* Dossiers prioritaires */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="text-gray-900 font-bold text-lg flex items-center gap-2">
-                <span>🚨</span> Dossiers prioritaires
-              </h2>
-              <span className="text-gray-400 text-xs bg-gray-100 px-3 py-1 rounded-full">Les plus anciens</span>
-            </div>
-            {prioritaires.length === 0 ? (
-              <div className="p-8 text-center">
-                <p className="text-3xl mb-3">🎉</p>
-                <p className="text-gray-400">Aucun dossier en attente !</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-100">
-                {prioritaires.map(d => (
-                  <div key={d.id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-blue-700 font-mono font-semibold text-sm">{d.numero}</span>
-                      {urgenceBadge(joursAttente(d.cree_le))}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-500 text-xs">
-                        {d.demandeur?.prenom} {d.demandeur?.nom}
-                      </span>
-                      {badgeStatut(d.statut)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
+        {[
+          { label: 'En attente', value: enAttente.length, sub: 'À traiter', color: '#2563eb' },
+          { label: 'En instruction', value: enInstruction.length, sub: 'En cours', color: '#d97706' },
+          { label: 'Traités', value: traites.length, sub: `${dossiers.filter(d => d.statut === 'accepte').length} acc. · ${dossiers.filter(d => d.statut === 'refuse').length} ref.`, color: '#059669' },
+          { label: 'Taux traitement', value: `${tauxTraitement}%`, sub: `Sur ${dossiers.length} dossiers`, color: '#7c3aed' },
+        ].map((kpi, i) => (
+          <div className="kpi-card" key={i}>
+            <div className="kpi-label">{kpi.label}</div>
+            <div className="kpi-value" style={{ color: kpi.color }}>{kpi.value}</div>
+            <div className="kpi-sub">{kpi.sub}</div>
           </div>
+        ))}
+      </div>
 
-          {/* Statistiques traitement */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100">
-              <h2 className="text-gray-900 font-bold text-lg flex items-center gap-2">
-                <span>📊</span> Statistiques de traitement
-              </h2>
-            </div>
-            <div className="p-6 space-y-5">
-              {[
-                { label: 'Dossiers acceptés', value: dossiers.filter(d => d.statut === 'accepte').length, color: 'bg-green-500' },
-                { label: 'Dossiers refusés', value: dossiers.filter(d => d.statut === 'refuse').length, color: 'bg-red-500' },
-                { label: 'En instruction', value: enInstruction.length, color: 'bg-yellow-500' },
-                { label: 'En attente', value: enAttente.length, color: 'bg-blue-500' },
-              ].map((stat, i) => {
-                const pct = dossiers.length ? Math.round(stat.value / dossiers.length * 100) : 0
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14, width: '100%' }}>
+        {/* Prioritaires */}
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">Dossiers prioritaires</span>
+            <span style={{ fontSize: 11, color: '#94a3b8' }}>Les plus anciens</span>
+          </div>
+          {prioritaires.length === 0 ? (
+            <div className="empty-state"><div className="empty-state-icon">✅</div>Aucun dossier en attente</div>
+          ) : prioritaires.map((d, i) => {
+            const jours = joursAttente(d.cree_le)
+            const joursColor = jours > 10 ? '#dc2626' : jours > 5 ? '#d97706' : '#059669'
+            const joursBg = jours > 10 ? '#fef2f2' : jours > 5 ? '#fffbeb' : '#ecfdf5'
+            return (
+              <div key={d.id} style={{ padding: '12px 16px', borderBottom: i < prioritaires.length - 1 ? '1px solid #f8fafc' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#2563eb' }}>{d.numero}</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{d.demandeur?.prenom} {d.demandeur?.nom}</div>
+                </div>
+                <span className="badge" style={{ background: joursBg, color: joursColor }}>{jours}j</span>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Statistiques */}
+        <div className="card" style={{ padding: 20 }}>
+          <div className="card-title" style={{ marginBottom: 16 }}>Statistiques</div>
+          {[
+            { label: 'Acceptés', value: dossiers.filter(d => d.statut === 'accepte').length, color: '#10b981' },
+            { label: 'Refusés', value: dossiers.filter(d => d.statut === 'refuse').length, color: '#ef4444' },
+            { label: 'En instruction', value: enInstruction.length, color: '#f59e0b' },
+            { label: 'En attente', value: enAttente.length, color: '#3b82f6' },
+          ].map((s, i) => <BarH key={i} {...s} max={Math.max(dossiers.length, 1)} />)}
+        </div>
+      </div>
+
+      {/* Tableau en attente */}
+      <div className="card">
+        <div className="card-header">
+          <span className="card-title">Tous les dossiers en attente</span>
+          <span className="count-badge">{enAttente.length}</span>
+        </div>
+        {enAttente.length === 0 ? (
+          <div className="empty-state"><div className="empty-state-icon">✅</div>Aucun dossier en attente</div>
+        ) : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                {['Numéro', 'Demandeur', 'Date dépôt', 'Ancienneté', 'Statut'].map(col => <th key={col}>{col}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {enAttente.sort((a, b) => new Date(a.cree_le) - new Date(b.cree_le)).map((d) => {
+                const jours = joursAttente(d.cree_le)
+                const joursColor = jours > 10 ? '#dc2626' : jours > 5 ? '#d97706' : '#059669'
+                const joursBg = jours > 10 ? '#fef2f2' : jours > 5 ? '#fffbeb' : '#ecfdf5'
                 return (
-                  <div key={i}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-gray-600 text-sm">{stat.label}</span>
-                      <span className="text-gray-900 font-bold text-sm">{stat.value} <span className="text-gray-400 font-normal">({pct}%)</span></span>
-                    </div>
-                    <div className="w-full bg-gray-100 rounded-full h-2">
-                      <div className={`${stat.color} h-2 rounded-full transition-all`} style={{width: `${pct}%`}} />
-                    </div>
-                  </div>
+                  <tr key={d.id}>
+                    <td><span style={{ fontWeight: 700, color: '#2563eb', fontSize: 13 }}>{d.numero}</span></td>
+                    <td>
+                      <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>{d.demandeur?.prenom} {d.demandeur?.nom}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8' }}>{d.demandeur?.email}</div>
+                    </td>
+                    <td style={{ fontSize: 12, color: '#64748b' }}>{new Date(d.cree_le).toLocaleDateString('fr-FR')}</td>
+                    <td><span className="badge" style={{ background: joursBg, color: joursColor }}>{jours}j</span></td>
+                    <td><span className="badge" style={{ background: '#eff6ff', color: '#2563eb' }}>{d.statut}</span></td>
+                  </tr>
                 )
               })}
-            </div>
-          </div>
-        </div>
-
-        {/* Tableau dossiers en attente */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-10">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="text-gray-900 font-bold text-lg flex items-center gap-2">
-              <span>📁</span> Tous les dossiers en attente
-            </h2>
-          </div>
-          {enAttente.length === 0 ? (
-            <p className="text-gray-400 p-6 text-center">Aucun dossier en attente 🎉</p>
-          ) : (
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Numéro</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Demandeur</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Date dépôt</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Ancienneté</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Statut</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {enAttente.sort((a, b) => new Date(a.cree_le) - new Date(b.cree_le)).map(d => (
-                  <tr key={d.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 text-blue-700 font-mono font-semibold text-sm">{d.numero}</td>
-                    <td className="px-6 py-4">
-                      <p className="text-gray-900 font-semibold text-sm">{d.demandeur?.prenom} {d.demandeur?.nom}</p>
-                      <p className="text-gray-400 text-xs">{d.demandeur?.email}</p>
-                    </td>
-                    <td className="px-6 py-4 text-gray-500 text-sm">
-                      {new Date(d.cree_le).toLocaleDateString('fr-FR')}
-                    </td>
-                    <td className="px-6 py-4">{urgenceBadge(joursAttente(d.cree_le))}</td>
-                    <td className="px-6 py-4">{badgeStatut(d.statut)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        {/* Footer */}
-        <footer className="border-t border-gray-200 pt-10">
-          <div className="grid grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="bg-red-600 text-white font-bold text-xs px-1 py-1 rounded">RF</div>
-                <span className="text-gray-700 font-semibold text-sm">RÉPUBLIQUE FRANÇAISE</span>
-              </div>
-              <p className="text-gray-400 text-xs">Plateforme de gestion et suivi des aides publiques.</p>
-            </div>
-            <div>
-              <h3 className="text-gray-700 font-semibold text-sm mb-3">Navigation</h3>
-              <div className="flex flex-col gap-2">
-                <Link to="/aides" className="text-gray-400 hover:text-gray-700 text-xs">Catalogue des aides</Link>
-                <Link to="/deposer" className="text-gray-400 hover:text-gray-700 text-xs">Déposer un dossier</Link>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-gray-700 font-semibold text-sm mb-3">Espace instructeur</h3>
-              <div className="flex flex-col gap-2">
-                <Link to="/instructeur" className="text-gray-400 hover:text-gray-700 text-xs">Mes dossiers</Link>
-                <Link to="/instructeur/dashboard" className="text-gray-400 hover:text-gray-700 text-xs">Dashboard</Link>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-gray-700 font-semibold text-sm mb-3">Informations</h3>
-              <div className="flex flex-col gap-2">
-                <a href="#" className="text-gray-400 hover:text-gray-700 text-xs">Mentions légales</a>
-                <a href="#" className="text-gray-400 hover:text-gray-700 text-xs">Accessibilité</a>
-              </div>
-            </div>
-          </div>
-          <div className="border-t border-gray-200 pt-4 text-center">
-            <p className="text-gray-400 text-xs">© 2026 Plateforme Aides Publiques — Tous droits réservés</p>
-          </div>
-        </footer>
+            </tbody>
+          </table>
+        )}
       </div>
-    </div>
+    </SidebarLayout>
   )
 }
 

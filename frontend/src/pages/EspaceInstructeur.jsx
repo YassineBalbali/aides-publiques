@@ -1,245 +1,139 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { SidebarLayout, IconFolder, IconChart } from './SidebarLayout'
 import api from '../api'
+
+const INSTRUCTEUR_NAV = [
+  { to: '/instructeur', label: 'Mes dossiers', Icon: IconFolder },
+  { to: '/instructeur/dashboard', label: 'Dashboard', Icon: IconChart },
+]
+
+const STATUT = {
+  brouillon: { label: 'Brouillon', bg: '#f1f5f9', color: '#64748b' },
+  depose: { label: 'Déposé', bg: '#eff6ff', color: '#2563eb' },
+  en_instruction: { label: 'En instruction', bg: '#fffbeb', color: '#d97706' },
+  accepte: { label: 'Accepté', bg: '#ecfdf5', color: '#059669' },
+  refuse: { label: 'Refusé', bg: '#fef2f2', color: '#dc2626' },
+  complement_demande: { label: 'Complément', bg: '#fff7ed', color: '#ea580c' },
+}
 
 function EspaceInstructeur() {
   const [dossiers, setDossiers] = useState([])
   const [chargement, setChargement] = useState(true)
+  const [recherche, setRecherche] = useState('')
   const [filtreStatut, setFiltreStatut] = useState('')
-  const [rechercheNom, setRechercheNom] = useState('')
+  const [filtreDate, setFiltreDate] = useState('')
   const navigate = useNavigate()
 
+  const token = localStorage.getItem('token')
+  const payload = token ? JSON.parse(atob(token.split('.')[1])) : null
+
   useEffect(() => {
-    const token = localStorage.getItem('token')
     if (!token) { navigate('/login'); return }
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]))
-      const instructeurId = payload.sub
-      api.get('/dossiers/')
-        .then(r => {
-          setDossiers(r.data.filter(d => d.instructeur_id === instructeurId))
-          setChargement(false)
-        })
-        .catch(() => setChargement(false))
-    } catch {
-      navigate('/login')
-    }
+    api.get('/dossiers/')
+      .then(r => { setDossiers(r.data.filter(d => d.instructeur_id === payload.sub)); setChargement(false) })
+      .catch(() => setChargement(false))
   }, [])
 
-  const changerStatut = async (dossierId, nouveauStatut) => {
-    try {
-      await api.patch(`/dossiers/${dossierId}/statut?statut=${nouveauStatut}`)
-      setDossiers(prev => prev.map(d =>
-        d.id === dossierId ? { ...d, statut: nouveauStatut } : d
-      ))
-    } catch (err) { console.error(err) }
-  }
-
-  const badgeStatut = (statut) => {
-    const styles = {
-      brouillon: 'bg-gray-100 text-gray-600',
-      depose: 'bg-blue-100 text-blue-800',
-      en_instruction: 'bg-yellow-100 text-yellow-800',
-      accepte: 'bg-green-100 text-green-800',
-      refuse: 'bg-red-100 text-red-800',
-    }
-    const labels = {
-      brouillon: 'Brouillon',
-      depose: 'Déposé',
-      en_instruction: 'En instruction',
-      accepte: 'Accepté',
-      refuse: 'Refusé',
-    }
-    return (
-      <span className={`text-xs font-semibold px-3 py-1 rounded-full ${styles[statut] || 'bg-gray-100'}`}>
-        {labels[statut] || statut}
-      </span>
-    )
-  }
-
   const dossiersFiltres = dossiers.filter(d => {
-    const nomComplet = `${d.demandeur?.prenom || ''} ${d.demandeur?.nom || ''} ${d.demandeur?.email || ''}`.toLowerCase()
-    const matchNom = nomComplet.includes(rechercheNom.toLowerCase())
+    const nom = `${d.demandeur?.prenom || ''} ${d.demandeur?.nom || ''} ${d.numero || ''}`.toLowerCase()
+    const matchRecherche = nom.includes(recherche.toLowerCase())
     const matchStatut = filtreStatut ? d.statut === filtreStatut : true
-    return matchNom && matchStatut
+    const matchDate = filtreDate ? new Date(d.cree_le).toISOString().split('T')[0] >= filtreDate : true
+    return matchRecherche && matchStatut && matchDate
   })
 
+  const hasFilters = filtreStatut || filtreDate || recherche
+
   return (
-    <div style={{backgroundColor: '#f5f5f5', minHeight: '100vh'}}>
-
-      {/* Bandeau RF */}
-      <div style={{backgroundColor: '#1a2b5e'}} className="px-8 py-2 flex items-center gap-3">
-        <div className="bg-red-600 text-white font-bold text-sm px-2 py-1 rounded">RF</div>
-        <span className="text-white text-sm font-semibold">RÉPUBLIQUE FRANÇAISE</span>
-        <span className="text-blue-300 text-xs">Liberté · Égalité · Fraternité</span>
-        <div className="ml-auto">
-          <button onClick={() => { localStorage.removeItem('token'); navigate('/') }}
-            className="text-white text-sm hover:underline">← Se déconnecter</button>
-        </div>
+    <SidebarLayout navItems={INSTRUCTEUR_NAV} role="instructeur" prenom={payload?.prenom || ''} nom={payload?.nom || ''}>
+      <div className="page-header">
+        <h1 className="page-title">Mes dossiers</h1>
+        <p className="page-subtitle">Dossiers qui vous sont affectés</p>
       </div>
 
-      {/* Navbar */}
-      <div className="bg-white border-b border-gray-200 px-8 py-3 flex items-center justify-between">
-        <Link to="/" className="text-blue-900 font-bold text-xl">Aides Publiques</Link>
-        <div className="flex items-center gap-6 text-sm text-gray-600">
-          <Link to="/" className="hover:text-blue-900">Accueil</Link>
-          <Link to="/aides" className="hover:text-blue-900">Catalogue des aides</Link>
-          <Link to="/instructeur" className="text-blue-900 font-semibold border-b-2 border-blue-900 pb-1">Mes dossiers</Link>
-          <Link to="/instructeur/dashboard" className="hover:text-blue-900">Dashboard</Link>
-        </div>
-      </div>
-
-      {/* Header */}
-      <div style={{backgroundColor: '#1a2b5e'}} className="px-8 py-10">
-        <div className="max-w-6xl mx-auto">
-          <h1 className="text-3xl font-bold text-white mb-2">Espace Instructeur</h1>
-          <p className="text-blue-200">Traitez les dossiers qui vous sont affectés</p>
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-8 py-8">
-
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          {[
-            { label: 'Total dossiers', value: dossiers.length, color: 'text-blue-900', bg: 'bg-blue-50 border-blue-200', icon: '📁' },
-            { label: 'En attente', value: dossiers.filter(d => d.statut === 'depose').length, color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200', icon: '⏳' },
-            { label: 'En instruction', value: dossiers.filter(d => d.statut === 'en_instruction').length, color: 'text-yellow-700', bg: 'bg-yellow-50 border-yellow-200', icon: '📋' },
-            { label: 'Traités', value: dossiers.filter(d => d.statut === 'accepte' || d.statut === 'refuse').length, color: 'text-green-700', bg: 'bg-green-50 border-green-200', icon: '✅' },
-          ].map((stat, i) => (
-            <div key={i} className={`${stat.bg} border rounded-xl p-5`}>
-              <div className="flex items-center gap-2 mb-2">
-                <span>{stat.icon}</span>
-                <p className="text-gray-500 text-sm">{stat.label}</p>
-              </div>
-              <p className={`text-3xl font-bold ${stat.color}`}>{stat.value}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Filtres */}
-        <div className="flex gap-4 mb-4">
-          <input
-            type="text"
-            placeholder="🔍 Rechercher par nom ou email..."
-            value={rechercheNom}
-            onChange={e => setRechercheNom(e.target.value)}
-            className="flex-1 border border-gray-300 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:border-blue-900 text-sm"
-          />
-          <select
-            value={filtreStatut}
-            onChange={e => setFiltreStatut(e.target.value)}
-            className="border border-gray-300 rounded-lg px-4 py-3 text-gray-700 focus:outline-none text-sm"
-          >
-            <option value="">Tous les statuts</option>
-            <option value="depose">Déposé</option>
-            <option value="en_instruction">En instruction</option>
-            <option value="accepte">Accepté</option>
-            <option value="refuse">Refusé</option>
-          </select>
-        </div>
-
-        <p className="text-gray-500 text-sm mb-4">{dossiersFiltres.length} dossier(s) trouvé(s)</p>
-
-        {/* Tableau */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="text-gray-900 font-bold text-lg">Mes dossiers affectés</h2>
+      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
+        {[
+          { label: 'Total', value: dossiers.length, color: '#2563eb' },
+          { label: 'En attente', value: dossiers.filter(d => d.statut === 'depose').length, color: '#d97706' },
+          { label: 'En instruction', value: dossiers.filter(d => d.statut === 'en_instruction').length, color: '#7c3aed' },
+          { label: 'Traités', value: dossiers.filter(d => d.statut === 'accepte' || d.statut === 'refuse').length, color: '#059669' },
+        ].map((s, i) => (
+          <div className="kpi-card" key={i}>
+            <div className="kpi-label">{s.label}</div>
+            <div className="kpi-value" style={{ color: s.color }}>{s.value}</div>
           </div>
+        ))}
+      </div>
 
-          {chargement ? (
-            <p className="text-gray-400 p-6 text-center">Chargement...</p>
-          ) : dossiersFiltres.length === 0 ? (
-            <div className="p-12 text-center">
-              <p className="text-gray-400 text-lg mb-2">Aucun dossier affecté</p>
-              <p className="text-gray-400 text-sm">L'administrateur doit vous affecter des dossiers</p>
-            </div>
-          ) : (
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Numéro</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Demandeur</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Commentaire</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Statut</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {dossiersFiltres.map(dossier => (
-                  <tr key={dossier.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 text-blue-700 font-mono font-semibold text-sm">{dossier.numero}</td>
-                    <td className="px-6 py-4">
-                      <p className="text-gray-900 font-semibold text-sm">{dossier.demandeur?.prenom} {dossier.demandeur?.nom}</p>
-                      <p className="text-gray-400 text-xs">{dossier.demandeur?.email}</p>
-                    </td>
-                    <td className="px-6 py-4 text-gray-500 text-sm max-w-xs truncate">{dossier.commentaire || '—'}</td>
-                    <td className="px-6 py-4 text-gray-500 text-sm">
-                      {new Date(dossier.cree_le).toLocaleDateString('fr-FR')}
-                    </td>
-                    <td className="px-6 py-4">{badgeStatut(dossier.statut)}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2">
-                        <button onClick={() => changerStatut(dossier.id, 'accepte')}
-                          className="bg-green-100 hover:bg-green-200 text-green-700 text-xs font-semibold px-3 py-1 rounded-lg transition-colors">
-                          ✓ Accepter
-                        </button>
-                        <button onClick={() => changerStatut(dossier.id, 'refuse')}
-                          className="bg-red-100 hover:bg-red-200 text-red-600 text-xs font-semibold px-3 py-1 rounded-lg transition-colors">
-                          ✗ Refuser
-                        </button>
-                        <button onClick={() => changerStatut(dossier.id, 'en_instruction')}
-                          className="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 text-xs font-semibold px-3 py-1 rounded-lg transition-colors">
-                          📋 Instruire
-                        </button>
+      <div className="filter-bar">
+        <input className="search-input" type="text" placeholder="Rechercher par nom ou numéro..." value={recherche} onChange={e => setRecherche(e.target.value)} />
+        <select className="select-input" value={filtreStatut} onChange={e => setFiltreStatut(e.target.value)}>
+          <option value="">Tous les statuts</option>
+          <option value="depose">Déposé</option>
+          <option value="en_instruction">En instruction</option>
+          <option value="accepte">Accepté</option>
+          <option value="refuse">Refusé</option>
+        </select>
+        <input type="date" value={filtreDate} onChange={e => setFiltreDate(e.target.value)} className="select-input" />
+        {hasFilters && (
+          <button className="btn btn-sm btn-danger-sm" onClick={() => { setRecherche(''); setFiltreStatut(''); setFiltreDate('') }}>
+            ✕ Réinitialiser
+          </button>
+        )}
+        <span className="count-badge">{dossiersFiltres.length} dossier(s)</span>
+      </div>
+
+      <div className="card">
+        <table className="data-table">
+          <thead>
+            <tr>
+              {['Numéro', 'Demandeur', 'Date dépôt', 'Statut', 'Action'].map(col => (
+                <th key={col}>{col}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {chargement ? (
+              <tr><td colSpan={5} className="empty-state">Chargement...</td></tr>
+            ) : dossiersFiltres.length === 0 ? (
+              <tr><td colSpan={5}><div className="empty-state"><div className="empty-state-icon">📭</div>Aucun dossier trouvé</div></td></tr>
+            ) : dossiersFiltres.map((d) => {
+              const s = STATUT[d.statut] || STATUT.brouillon
+              const jours = Math.floor((new Date() - new Date(d.cree_le)) / (1000 * 60 * 60 * 24))
+              const joursColor = jours > 10 ? '#dc2626' : jours > 5 ? '#d97706' : '#059669'
+              const joursBg = jours > 10 ? '#fef2f2' : jours > 5 ? '#fffbeb' : '#ecfdf5'
+              return (
+                <tr key={d.id}>
+                  <td><span style={{ fontWeight: 700, color: '#2563eb', fontSize: 13 }}>{d.numero}</span></td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                      <div className="avatar" style={{ width: 30, height: 30, background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', fontSize: 11 }}>
+                        {(d.demandeur?.prenom?.[0] || '?').toUpperCase()}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        {/* Footer */}
-        <footer className="border-t border-gray-200 pt-10 mt-10">
-          <div className="grid grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="bg-red-600 text-white font-bold text-xs px-1 py-1 rounded">RF</div>
-                <span className="text-gray-700 font-semibold text-sm">RÉPUBLIQUE FRANÇAISE</span>
-              </div>
-              <p className="text-gray-400 text-xs">Plateforme de gestion et suivi des aides publiques.</p>
-            </div>
-            <div>
-              <h3 className="text-gray-700 font-semibold text-sm mb-3">Navigation</h3>
-              <div className="flex flex-col gap-2">
-                <Link to="/aides" className="text-gray-400 hover:text-gray-700 text-xs">Catalogue des aides</Link>
-                <Link to="/deposer" className="text-gray-400 hover:text-gray-700 text-xs">Déposer un dossier</Link>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-gray-700 font-semibold text-sm mb-3">Espace instructeur</h3>
-              <div className="flex flex-col gap-2">
-                <Link to="/instructeur" className="text-gray-400 hover:text-gray-700 text-xs">Mes dossiers</Link>
-                <Link to="/instructeur/dashboard" className="text-gray-400 hover:text-gray-700 text-xs">Dashboard</Link>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-gray-700 font-semibold text-sm mb-3">Informations</h3>
-              <div className="flex flex-col gap-2">
-                <a href="#" className="text-gray-400 hover:text-gray-700 text-xs">Mentions légales</a>
-                <a href="#" className="text-gray-400 hover:text-gray-700 text-xs">Accessibilité</a>
-              </div>
-            </div>
-          </div>
-          <div className="border-t border-gray-200 pt-4 text-center">
-            <p className="text-gray-400 text-xs">© 2026 Plateforme Aides Publiques — Tous droits réservés</p>
-          </div>
-        </footer>
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>{d.demandeur?.prenom} {d.demandeur?.nom}</div>
+                        <div style={{ fontSize: 11, color: '#94a3b8' }}>{d.demandeur?.email}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div style={{ fontSize: 12, color: '#64748b' }}>{new Date(d.cree_le).toLocaleDateString('fr-FR')}</div>
+                    <span className="badge" style={{ background: joursBg, color: joursColor, marginTop: 3 }}>{jours}j</span>
+                  </td>
+                  <td><span className="badge" style={{ background: s.bg, color: s.color }}>{s.label}</span></td>
+                  <td>
+                    <Link to={`/instructeur/dossier/${d.id}`} className="btn btn-sm btn-blue-sm" style={{ textDecoration: 'none' }}>
+                      Traiter →
+                    </Link>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       </div>
-    </div>
+    </SidebarLayout>
   )
 }
 

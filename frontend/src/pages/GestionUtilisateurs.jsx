@@ -1,266 +1,192 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { SidebarLayout, IconFolder, IconList, IconUsers, IconLink, IconChart, IconSettings, IconUser } from './SidebarLayout'
+import api from '../api'
+
+const ADMIN_NAV = [
+  { to: '/admin/dossiers', label: 'Dossiers', Icon: IconFolder },
+  { to: '/admin/aides', label: 'Gestion Aides', Icon: IconList },
+  { to: '/admin/utilisateurs', label: 'Utilisateurs', Icon: IconUsers },
+  { to: '/admin/affectations', label: 'Affectations', Icon: IconLink },
+  { to: '/admin/dashboard', label: 'Dashboard', Icon: IconChart },
+  { to: '/admin/parametres', label: 'Paramètres', Icon: IconSettings },
+  { to: '/profil', label: 'Profil', Icon: IconUser },
+]
+
+const ROLE_COLORS = {
+  admin: { bg: '#fef2f2', color: '#dc2626', label: 'Admin' },
+  instructeur: { bg: '#eff6ff', color: '#2563eb', label: 'Instructeur' },
+  demandeur: { bg: '#ecfdf5', color: '#059669', label: 'Demandeur' },
+}
+
+const AVATAR_COLORS = ['#6366f1', '#8b5cf6', '#2563eb', '#059669', '#d97706', '#dc2626']
 
 function GestionUtilisateurs() {
   const [utilisateurs, setUtilisateurs] = useState([])
   const [chargement, setChargement] = useState(true)
-  const [showForm, setShowForm] = useState(false)
-  const [userEnEdition, setUserEnEdition] = useState(null)
-  const [form, setForm] = useState({ nom: '', prenom: '', email: '', role: 'demandeur' })
   const [recherche, setRecherche] = useState('')
-  const navigate = useNavigate()
+  const [filtreRole, setFiltreRole] = useState('')
+  const [message, setMessage] = useState('')
+  const [erreur, setErreur] = useState('')
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({ prenom: '', nom: '', email: '', mot_de_passe: '' })
+  const [creationEnCours, setCreationEnCours] = useState(false)
+
+  const token = localStorage.getItem('token')
+  const payload = token ? JSON.parse(atob(token.split('.')[1])) : null
 
   useEffect(() => { chargerUtilisateurs() }, [])
 
   const chargerUtilisateurs = () => {
-    fetch('http://127.0.0.1:8000/auth/utilisateurs')
-      .then(r => r.json())
-      .then(data => { setUtilisateurs(data); setChargement(false) })
-      .catch(() => setChargement(false))
+    api.get('/auth/utilisateurs').then(r => { setUtilisateurs(r.data); setChargement(false) }).catch(() => setChargement(false))
   }
 
-  const ouvrirFormulaire = (user) => {
-    setUserEnEdition(user)
-    setForm({ nom: user.nom || '', prenom: user.prenom || '', email: user.email, role: user.role })
-    setShowForm(true)
+  const showMsg = (msg, isErr = false) => {
+    if (isErr) { setErreur(msg); setMessage('') } else { setMessage(msg); setErreur('') }
+    setTimeout(() => { setMessage(''); setErreur('') }, 3000)
   }
 
-  const sauvegarder = async () => {
-    const response = await fetch(`http://127.0.0.1:8000/auth/utilisateurs/${userEnEdition.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form)
-    })
-    if (response.ok) { setShowForm(false); chargerUtilisateurs() }
+  const changerRole = async (id, role) => {
+    try {
+      await api.put(`/auth/utilisateurs/${id}`, { role })
+      setUtilisateurs(prev => prev.map(u => u.id === id ? { ...u, role } : u))
+      showMsg('Rôle mis à jour !')
+    } catch { showMsg('Erreur lors de la mise à jour', true) }
   }
 
-  const supprimerUser = async (id) => {
+  const supprimerUtilisateur = async (id) => {
     if (!confirm('Supprimer cet utilisateur ?')) return
-    await fetch(`http://127.0.0.1:8000/auth/utilisateurs/${id}`, { method: 'DELETE' })
-    chargerUtilisateurs()
+    try { await api.delete(`/auth/utilisateurs/${id}`); chargerUtilisateurs() }
+    catch { showMsg('Erreur lors de la suppression', true) }
   }
 
-  const roleBadge = (role) => {
-    const styles = {
-      admin: 'bg-red-100 text-red-600',
-      instructeur: 'bg-blue-100 text-blue-700',
-      demandeur: 'bg-green-100 text-green-700',
-    }
-    const labels = { admin: '🔴 Admin', instructeur: '🔵 Instructeur', demandeur: '🟢 Demandeur' }
-    return <span className={`text-xs font-semibold px-3 py-1 rounded-full ${styles[role] || 'bg-gray-100'}`}>{labels[role] || role}</span>
+  const creerInstructeur = async () => {
+    if (!form.prenom || !form.nom || !form.email || !form.mot_de_passe) { showMsg('Tous les champs sont obligatoires', true); return }
+    setCreationEnCours(true)
+    try {
+      const res = await api.post('/auth/register', { ...form })
+      await api.put(`/auth/utilisateurs/${res.data.id}`, { role: 'instructeur' })
+      showMsg('Instructeur créé avec succès !')
+      setShowForm(false)
+      setForm({ prenom: '', nom: '', email: '', mot_de_passe: '' })
+      chargerUtilisateurs()
+    } catch (err) { showMsg(err.response?.data?.detail || 'Erreur', true) }
+    finally { setCreationEnCours(false) }
   }
 
   const utilisateursFiltres = utilisateurs.filter(u => {
-    const txt = `${u.prenom || ''} ${u.nom || ''} ${u.email}`.toLowerCase()
-    return txt.includes(recherche.toLowerCase())
+    const nom = `${u.prenom || ''} ${u.nom || ''} ${u.email}`.toLowerCase()
+    return nom.includes(recherche.toLowerCase()) && (filtreRole ? u.role === filtreRole : true)
   })
 
   return (
-    <div style={{backgroundColor: '#f5f5f5', minHeight: '100vh'}}>
-
-      {/* Bandeau RF */}
-      <div style={{backgroundColor: '#1a2b5e'}} className="px-8 py-2 flex items-center gap-3">
-        <div className="bg-red-600 text-white font-bold text-sm px-2 py-1 rounded">RF</div>
-        <span className="text-white text-sm font-semibold">RÉPUBLIQUE FRANÇAISE</span>
-        <span className="text-blue-300 text-xs">Liberté · Égalité · Fraternité</span>
-        <div className="ml-auto">
-          <button onClick={() => { localStorage.removeItem('token'); navigate('/') }}
-            className="text-white text-sm hover:underline">← Se déconnecter</button>
+    <SidebarLayout navItems={ADMIN_NAV} role="admin" prenom={payload?.prenom || ''} nom={payload?.nom || ''}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h1 className="page-title">Utilisateurs</h1>
+          <p className="page-subtitle">Gérez les comptes et les rôles</p>
         </div>
+        <button className="btn btn-primary" onClick={() => setShowForm(true)}>+ Créer un instructeur</button>
       </div>
 
-      {/* Navbar */}
-      <div className="bg-white border-b border-gray-200 px-8 py-3 flex items-center justify-between">
-        <Link to="/" className="text-blue-900 font-bold text-xl">Aides Publiques</Link>
-        <div className="flex items-center gap-6 text-sm text-gray-600">
-          <Link to="/" className="hover:text-blue-900">Accueil</Link>
-          <Link to="/aides" className="hover:text-blue-900">Catalogue des aides</Link>
-          <Link to="/admin" className="hover:text-blue-900">Espace admin</Link>
-          <Link to="/admin/aides" className="hover:text-blue-900">Gestion des aides</Link>
-          <Link to="/admin/utilisateurs" className="font-semibold text-blue-900 border-b-2 border-blue-900 pb-1">Utilisateurs</Link>
-        </div>
-      </div>
+      {message && <div className="alert-success">✓ {message}</div>}
+      {erreur && <div className="alert-error">✕ {erreur}</div>}
 
-      {/* Header */}
-      <div style={{backgroundColor: '#1a2b5e'}} className="px-8 py-10">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-2xl">👥</span>
-            <h1 className="text-3xl font-bold text-white">Gestion des Utilisateurs</h1>
+      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
+        {[
+          { label: 'Total', value: utilisateurs.length, color: '#2563eb' },
+          { label: 'Admins', value: utilisateurs.filter(u => u.role === 'admin').length, color: '#dc2626' },
+          { label: 'Instructeurs', value: utilisateurs.filter(u => u.role === 'instructeur').length, color: '#7c3aed' },
+          { label: 'Demandeurs', value: utilisateurs.filter(u => u.role === 'demandeur').length, color: '#059669' },
+        ].map((s, i) => (
+          <div className="kpi-card" key={i}>
+            <div className="kpi-label">{s.label}</div>
+            <div className="kpi-value" style={{ color: s.color }}>{s.value}</div>
           </div>
-          <p className="text-blue-200">Gérez les comptes et les rôles des utilisateurs</p>
-        </div>
+        ))}
       </div>
 
-      <div className="max-w-7xl mx-auto px-8 py-10">
+      <div className="filter-bar">
+        <input className="search-input" type="text" placeholder="Rechercher un utilisateur..." value={recherche} onChange={e => setRecherche(e.target.value)} />
+        <select className="select-input" value={filtreRole} onChange={e => setFiltreRole(e.target.value)}>
+          <option value="">Tous les rôles</option>
+          <option value="admin">Admin</option>
+          <option value="instructeur">Instructeur</option>
+          <option value="demandeur">Demandeur</option>
+        </select>
+        <span className="count-badge">{utilisateursFiltres.length} utilisateur(s)</span>
+      </div>
 
-        {/* KPIs */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          {[
-            { label: 'Total utilisateurs', value: utilisateurs.length, color: 'text-blue-900', bg: 'bg-blue-50', border: 'border-blue-200' },
-            { label: 'Admins', value: utilisateurs.filter(u => u.role === 'admin').length, color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200' },
-            { label: 'Instructeurs', value: utilisateurs.filter(u => u.role === 'instructeur').length, color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200' },
-            { label: 'Demandeurs', value: utilisateurs.filter(u => u.role === 'demandeur').length, color: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200' },
-          ].map((stat, i) => (
-            <div key={i} className={`${stat.bg} border ${stat.border} rounded-lg p-5 shadow-sm`}>
-              <p className="text-gray-500 text-sm mb-1">{stat.label}</p>
-              <p className={`text-3xl font-bold ${stat.color}`}>{stat.value}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Recherche */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <input
-            type="text"
-            placeholder="🔍 Rechercher par nom ou email..."
-            value={recherche}
-            onChange={e => setRecherche(e.target.value)}
-            className="w-full border border-gray-300 rounded px-4 py-3 text-gray-800 focus:outline-none focus:border-blue-500"
-          />
-          <p className="text-gray-400 text-sm mt-3">{utilisateursFiltres.length} utilisateur(s)</p>
-        </div>
-
-        {/* Tableau */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="text-lg font-bold text-gray-900">Liste des utilisateurs</h2>
-          </div>
-          {chargement ? (
-            <p className="text-gray-400 p-8 text-center">Chargement...</p>
-          ) : (
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Utilisateur</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Rôle</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Inscription</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+      <div className="card">
+        <table className="data-table">
+          <thead>
+            <tr>
+              {['Utilisateur', 'Email', 'Rôle', 'Inscription', 'Actions'].map(col => <th key={col}>{col}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {chargement ? (
+              <tr><td colSpan={5} className="empty-state">Chargement...</td></tr>
+            ) : utilisateursFiltres.length === 0 ? (
+              <tr><td colSpan={5}><div className="empty-state"><div className="empty-state-icon">👥</div>Aucun utilisateur trouvé</div></td></tr>
+            ) : utilisateursFiltres.map((u, i) => {
+              const rc = ROLE_COLORS[u.role] || { bg: '#f1f5f9', color: '#64748b', label: u.role }
+              const avatarColor = AVATAR_COLORS[u.id % AVATAR_COLORS.length]
+              return (
+                <tr key={u.id}>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div className="avatar" style={{ width: 32, height: 32, background: avatarColor, fontSize: 12 }}>
+                        {(u.prenom?.[0] || u.email[0]).toUpperCase()}
+                      </div>
+                      <span style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>{u.prenom} {u.nom}</span>
+                    </div>
+                  </td>
+                  <td style={{ color: '#64748b', fontSize: 13 }}>{u.email}</td>
+                  <td><span className="badge" style={{ background: rc.bg, color: rc.color }}>{rc.label}</span></td>
+                  <td style={{ fontSize: 12, color: '#94a3b8' }}>{u.cree_le ? new Date(u.cree_le).toLocaleDateString('fr-FR') : '—'}</td>
+                  <td>
+                    <div className="action-row">
+                      <select
+                        value={u.role}
+                        onChange={e => changerRole(u.id, e.target.value)}
+                        style={{ padding: '5px 8px', borderRadius: 6, fontSize: 12, border: '1px solid #e8ecf4', background: '#fff', color: '#374151', outline: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                        <option value="demandeur">Demandeur</option>
+                        <option value="instructeur">Instructeur</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                      <button className="btn btn-sm btn-danger-sm" onClick={() => supprimerUtilisateur(u.id)}>✕</button>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {utilisateursFiltres.map(u => (
-                  <tr key={u.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center text-blue-900 font-bold text-sm">
-                          {(u.prenom?.[0] || u.email[0]).toUpperCase()}
-                        </div>
-                        <span className="font-semibold text-gray-900">{u.prenom} {u.nom}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{u.email}</td>
-                    <td className="px-6 py-4">{roleBadge(u.role)}</td>
-                    <td className="px-6 py-4 text-sm text-gray-400">
-                      {u.cree_le ? new Date(u.cree_le).toLocaleDateString('fr-FR') : '—'}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2">
-                        <button onClick={() => ouvrirFormulaire(u)}
-                          className="bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded transition-colors">
-                          ✏️ Modifier
-                        </button>
-                        <button onClick={() => supprimerUser(u.id)}
-                          className="bg-red-100 hover:bg-red-200 text-red-600 text-xs font-semibold px-3 py-1.5 rounded transition-colors">
-                          🗑️ Supprimer
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        {/* Footer */}
-        <footer className="border-t border-gray-200 mt-12 pt-10">
-          <div className="grid grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="bg-red-600 text-white font-bold text-xs px-1 py-1 rounded">RF</div>
-                <span className="text-gray-700 font-semibold text-sm">RÉPUBLIQUE FRANÇAISE</span>
-              </div>
-              <p className="text-gray-400 text-xs">Plateforme de gestion et suivi des aides publiques.</p>
-            </div>
-            <div>
-              <h3 className="text-gray-700 font-semibold text-sm mb-3">Navigation</h3>
-              <div className="flex flex-col gap-2">
-                <Link to="/aides" className="text-gray-400 hover:text-gray-700 text-xs">Catalogue des aides</Link>
-                <Link to="/deposer" className="text-gray-400 hover:text-gray-700 text-xs">Déposer un dossier</Link>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-gray-700 font-semibold text-sm mb-3">Administration</h3>
-              <div className="flex flex-col gap-2">
-                <Link to="/admin" className="text-gray-400 hover:text-gray-700 text-xs">Espace admin</Link>
-                <Link to="/admin/aides" className="text-gray-400 hover:text-gray-700 text-xs">Gestion des aides</Link>
-                <Link to="/admin/utilisateurs" className="text-gray-400 hover:text-gray-700 text-xs">Utilisateurs</Link>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-gray-700 font-semibold text-sm mb-3">Informations</h3>
-              <div className="flex flex-col gap-2">
-                <a href="#" className="text-gray-400 hover:text-gray-700 text-xs">Mentions légales</a>
-                <a href="#" className="text-gray-400 hover:text-gray-700 text-xs">Accessibilité</a>
-              </div>
-            </div>
-          </div>
-          <div className="border-t border-gray-200 pt-4 text-center">
-            <p className="text-gray-400 text-xs">© 2026 Plateforme Aides Publiques — Tous droits réservés</p>
-          </div>
-        </footer>
+              )
+            })}
+          </tbody>
+        </table>
       </div>
 
-      {/* Modal édition */}
       {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 w-full max-w-md shadow-2xl">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">✏️ Modifier l'utilisateur</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Prénom</label>
-                <input placeholder="Prénom" value={form.prenom}
-                  onChange={e => setForm({...form, prenom: e.target.value})}
-                  className="w-full border border-gray-300 rounded px-4 py-3 focus:outline-none focus:border-blue-500" />
+        <div className="modal-overlay">
+          <div className="modal" style={{ maxWidth: 420 }}>
+            <h2 className="modal-title">Créer un instructeur</h2>
+            <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 20, marginTop: -12 }}>Le compte sera automatiquement configuré avec le rôle Instructeur.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="form-group"><label className="form-label">Prénom</label><input className="form-input" value={form.prenom} onChange={e => setForm({ ...form, prenom: e.target.value })} /></div>
+                <div className="form-group"><label className="form-label">Nom</label><input className="form-input" value={form.nom} onChange={e => setForm({ ...form, nom: e.target.value })} /></div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
-                <input placeholder="Nom" value={form.nom}
-                  onChange={e => setForm({...form, nom: e.target.value})}
-                  className="w-full border border-gray-300 rounded px-4 py-3 focus:outline-none focus:border-blue-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input placeholder="Email" value={form.email}
-                  onChange={e => setForm({...form, email: e.target.value})}
-                  className="w-full border border-gray-300 rounded px-4 py-3 focus:outline-none focus:border-blue-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Rôle</label>
-                <select value={form.role} onChange={e => setForm({...form, role: e.target.value})}
-                  className="w-full border border-gray-300 rounded px-4 py-3 focus:outline-none focus:border-blue-500">
-                  <option value="demandeur">🟢 Demandeur</option>
-                  <option value="instructeur">🔵 Instructeur</option>
-                  <option value="admin">🔴 Admin</option>
-                </select>
-              </div>
+              <div className="form-group"><label className="form-label">Email</label><input type="email" className="form-input" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
+              <div className="form-group"><label className="form-label">Mot de passe</label><input type="password" className="form-input" placeholder="••••••••" value={form.mot_de_passe} onChange={e => setForm({ ...form, mot_de_passe: e.target.value })} /></div>
             </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={sauvegarder}
-                className="flex-1 bg-blue-900 hover:bg-blue-800 text-white font-semibold py-3 rounded transition-colors">
-                ✓ Sauvegarder
-              </button>
-              <button onClick={() => setShowForm(false)}
-                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 rounded transition-colors">
-                Annuler
+            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowForm(false)}>Annuler</button>
+              <button className="btn btn-primary" style={{ flex: 1, opacity: creationEnCours ? 0.7 : 1 }} onClick={creerInstructeur} disabled={creationEnCours}>
+                {creationEnCours ? 'Création...' : 'Créer le compte'}
               </button>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </SidebarLayout>
   )
 }
 

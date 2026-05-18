@@ -22,6 +22,7 @@ class DossierResponse(BaseModel):
     numero: str
     statut: StatutDossier
     commentaire: Optional[str] = None
+    commentaire_interne: Optional[str] = None
     demandeur_id: UUID
     demandeur: Optional[DemandeurInfo] = None
     aide_id: UUID

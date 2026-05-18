@@ -11,3 +11,13 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# VS Code
+.vscode/
+
+# Uploads
+backend/photos/
+backend/documents/
+
+# Python cache
+*.py[cod]
