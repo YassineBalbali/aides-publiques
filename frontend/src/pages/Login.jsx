@@ -24,98 +24,116 @@ export default function Login() {
     }
   }
 
-  const inp = (err) => `w-full px-4 py-3 rounded-xl text-sm border ${err ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50 focus:border-blue-400'} outline-none text-gray-800 placeholder-gray-400 transition-colors`
+  const inputStyle = (hasError) => ({
+    width: '100%', padding: '12px 16px', borderRadius: 10, fontSize: 14,
+    background: hasError ? 'rgba(220,38,38,0.15)' : 'rgba(255,255,255,0.08)',
+    border: hasError ? '1px solid rgba(220,38,38,0.5)' : '1px solid rgba(255,255,255,0.14)',
+    outline: 'none', color: '#fff', fontFamily: 'inherit',
+    transition: 'all 0.2s', boxSizing: 'border-box',
+  })
+
+  const onFocusInput = (e) => {
+    e.target.style.borderColor = 'rgba(99,102,241,0.7)'
+    e.target.style.background = 'rgba(255,255,255,0.12)'
+    e.target.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.15)'
+  }
+  const onBlurInput = (e, hasError) => {
+    e.target.style.borderColor = hasError ? 'rgba(220,38,38,0.5)' : 'rgba(255,255,255,0.14)'
+    e.target.style.background = hasError ? 'rgba(220,38,38,0.15)' : 'rgba(255,255,255,0.08)'
+    e.target.style.boxShadow = 'none'
+  }
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
-      {/* Panneau gauche */}
-      <div className="w-5/12 bg-blue-900 flex flex-col justify-between p-12 relative overflow-hidden flex-shrink-0">
-        <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-white/[0.04]" />
-        <div className="absolute -bottom-16 -left-16 w-56 h-56 rounded-full bg-white/[0.04]" />
+    <div className="bg-hero-mesh" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', position: 'relative', overflow: 'hidden' }}>
 
-        <Link to="/" className="flex items-center gap-2.5 no-underline relative z-10">
-          <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-sm">AP</span>
-          </div>
-          <span className="text-white font-bold text-base">Aides Publiques</span>
-        </Link>
+      {/* Animated blobs */}
+      <div className="anim-blob" style={{ position: 'absolute', top: '12%', left: '6%', width: 420, height: 420, background: 'radial-gradient(circle, rgba(99,102,241,0.22) 0%, transparent 70%)', filter: 'blur(50px)', pointerEvents: 'none', animationDuration: '14s' }} />
+      <div className="anim-blob" style={{ position: 'absolute', bottom: '12%', right: '6%', width: 360, height: 360, background: 'radial-gradient(circle, rgba(139,92,246,0.2) 0%, transparent 70%)', filter: 'blur(45px)', pointerEvents: 'none', animationDuration: '19s', animationDelay: '-7s' }} />
 
-        <div className="relative z-10">
-          <h2 className="text-white text-3xl font-extrabold leading-tight mb-4 tracking-tight">
-            Accédez à vos<br />aides publiques
-          </h2>
-          <p className="text-blue-300 text-sm leading-relaxed mb-8">
-            Gérez vos demandes d'aides publiques depuis votre espace personnel sécurisé.
-          </p>
-          <div className="flex flex-col gap-3">
-            {['127 aides disponibles', '8 500+ dossiers traités', 'Réponse sous 48h garantie'].map((item, i) => (
-              <div key={i} className="flex items-center gap-2.5">
-                <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white text-xs font-bold">✓</span>
-                </div>
-                <span className="text-blue-200 text-sm">{item}</span>
-              </div>
-            ))}
-          </div>
+      {/* Grid overlay */}
+      <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '60px 60px', pointerEvents: 'none' }} />
+
+      {/* Logo */}
+      <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', marginBottom: 32, position: 'relative', zIndex: 1 }}>
+        <div style={{ width: 38, height: 38, borderRadius: 11, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 20px rgba(99,102,241,0.5)', flexShrink: 0 }}>
+          <span style={{ color: '#fff', fontWeight: 800, fontSize: 14 }}>AP</span>
+        </div>
+        <span style={{ color: '#fff', fontWeight: 700, fontSize: 16, letterSpacing: '-0.01em' }}>Aides Publiques</span>
+      </Link>
+
+      {/* Glass card */}
+      <div className="anim-fadeInUp" style={{ width: '100%', maxWidth: 420, padding: '36px 40px', borderRadius: 20, background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.14)', boxShadow: '0 24px 64px rgba(0,0,0,0.3)', position: 'relative', zIndex: 1 }}>
+
+        <div style={{ marginBottom: 28 }}>
+          <h1 style={{ fontSize: 26, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em', marginBottom: 6 }}>Connexion</h1>
+          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.48)' }}>Accédez à votre espace personnel</p>
         </div>
 
-        <p className="text-blue-400 text-xs relative z-10">© 2026 Plateforme Aides Publiques</p>
-      </div>
+        {serverError && (
+          <div style={{ background: 'rgba(220,38,38,0.18)', border: '1px solid rgba(220,38,38,0.4)', borderRadius: 10, padding: '11px 14px', marginBottom: 20, fontSize: 13, color: '#fca5a5', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>⚠️</span> {serverError}
+          </div>
+        )}
 
-      {/* Panneau droit */}
-      <div className="flex-1 flex items-center justify-center px-12 py-12">
-        <div className="w-full max-w-sm">
-          <div className="mb-8">
-            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight mb-1.5">Connexion</h1>
-            <p className="text-sm text-gray-500">Accédez à votre espace personnel</p>
+        <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: 18 }} noValidate>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.65)', marginBottom: 8 }}>Adresse email</label>
+            <input type="email" placeholder="votre@email.fr"
+              {...register('email', { required: "L'email est obligatoire" })}
+              className="input-dark"
+              style={inputStyle(!!errors.email)}
+              onFocus={onFocusInput}
+              onBlur={e => onBlurInput(e, !!errors.email)}
+            />
+            {errors.email && <p style={{ color: '#fca5a5', fontSize: 12, marginTop: 5 }}>{errors.email.message}</p>}
           </div>
 
-          {serverError && (
-            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-5 text-sm text-red-600">
-              {serverError}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.65)' }}>Mot de passe</label>
+              <Link to="/forgot-password" style={{ fontSize: 12, color: '#818cf8', textDecoration: 'none', fontWeight: 600 }}>Mot de passe oublié ?</Link>
             </div>
-          )}
-
-          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Adresse email</label>
-              <input type="email" placeholder="votre@email.fr"
-                {...register('email', { required: "L'email est obligatoire" })}
-                className={inp(!!errors.email)} />
-              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
+            <div style={{ position: 'relative' }}>
+              <input type={showPassword ? 'text' : 'password'} placeholder="••••••••"
+                {...register('mot_de_passe', { required: 'Obligatoire', minLength: { value: 6, message: 'Min 6 caractères' } })}
+                className="input-dark"
+                style={{ ...inputStyle(!!errors.mot_de_passe), paddingRight: 46 }}
+                onFocus={onFocusInput}
+                onBlur={e => onBlurInput(e, !!errors.mot_de_passe)}
+              />
+              <button type="button" onClick={() => setShowPassword(!showPassword)}
+                style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.45)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: 0, transition: 'color 0.2s' }}
+                onMouseEnter={e => e.currentTarget.style.color = 'rgba(255,255,255,0.8)'}
+                onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.45)'}>
+                {showPassword ? '🙈' : '👁️'}
+              </button>
             </div>
+            {errors.mot_de_passe && <p style={{ color: '#fca5a5', fontSize: 12, marginTop: 5 }}>{errors.mot_de_passe.message}</p>}
+          </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-semibold text-gray-700">Mot de passe</label>
-                <Link to="/forgot-password" className="text-xs text-blue-600 font-semibold no-underline hover:underline">
-                  Mot de passe oublié ?
-                </Link>
+          <button type="submit" disabled={isSubmitting} className="btn-gradient"
+            style={{ width: '100%', padding: '13px', borderRadius: 10, fontSize: 14, fontFamily: 'inherit', color: '#fff', border: 'none', cursor: 'pointer', marginTop: 4 }}>
+            {isSubmitting ? 'Connexion...' : 'Se connecter →'}
+          </button>
+        </form>
+
+        <div style={{ marginTop: 24, paddingTop: 24, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+          {['127 aides disponibles', '8 500+ dossiers traités', 'Réponse sous 48h garantie'].map((item, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: i < 2 ? 8 : 0 }}>
+              <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'rgba(34,197,94,0.18)', border: '1px solid rgba(34,197,94,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span style={{ color: '#86efac', fontSize: 10, fontWeight: 700 }}>✓</span>
               </div>
-              <div className="relative">
-                <input type={showPassword ? 'text' : 'password'} placeholder="••••••••"
-                  {...register('mot_de_passe', { required: 'Obligatoire', minLength: { value: 6, message: 'Min 6 caractères' } })}
-                  className={`${inp(!!errors.mot_de_passe)} pr-11`} />
-                <button type="button" onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors text-base">
-                  {showPassword ? '🙈' : '👁️'}
-                </button>
-              </div>
-              {errors.mot_de_passe && <p className="text-red-500 text-xs mt-1">{errors.mot_de_passe.message}</p>}
+              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>{item}</span>
             </div>
-
-            <button type="submit" disabled={isSubmitting}
-              className="w-full py-3 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors mt-1">
-              {isSubmitting ? 'Connexion...' : 'Se connecter'}
-            </button>
-          </form>
-
-          <p className="mt-6 text-center text-sm text-gray-500">
-            Pas encore de compte ?{' '}
-            <Link to="/register" className="text-blue-600 font-semibold no-underline hover:underline">Créer un compte</Link>
-          </p>
+          ))}
         </div>
       </div>
+
+      <p style={{ marginTop: 24, fontSize: 13, color: 'rgba(255,255,255,0.38)', position: 'relative', zIndex: 1 }}>
+        Pas encore de compte ?{' '}
+        <Link to="/register" style={{ color: '#818cf8', fontWeight: 600, textDecoration: 'none' }}>Créer un compte</Link>
+      </p>
+      <p style={{ marginTop: 10, fontSize: 11, color: 'rgba(255,255,255,0.18)', position: 'relative', zIndex: 1 }}>© 2026 Plateforme Aides Publiques</p>
     </div>
   )
 }

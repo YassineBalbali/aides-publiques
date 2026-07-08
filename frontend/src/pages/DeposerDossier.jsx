@@ -1,44 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import api from '../api'
-import { NotificationIcon } from './Notifications'
+import NavbarShared from '../components/NavbarShared'
 
 const MAX_SIZE = 10 * 1024 * 1024
-
-function Navbar({ prenom, nom }) {
-  const navigate = useNavigate()
-  const nomPlateforme = localStorage.getItem('plateforme_nom') || 'Aides Publiques'
-  return (
-    <nav className="bg-white border-b border-gray-100 sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between relative">
-        <Link to="/" className="flex items-center gap-2.5 no-underline">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0"><span className="text-white font-bold text-xs">AP</span></div>
-          <span className="font-bold text-gray-900 text-sm">{nomPlateforme}</span>
-        </Link>
-        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-0.5">
-          {[{ to: '/', l: 'Accueil' }, { to: '/catalogue', l: 'Catalogue' }, { to: '/deposer', l: 'Déposer' }, { to: '/mon-espace', l: 'Mon espace' }].map(({ to, l }) => (
-            <Link key={to} to={to} className={`px-3 py-1.5 rounded-lg text-sm font-medium no-underline transition-colors ${to === '/deposer' ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'}`}>{l}</Link>
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            <span className="text-xs text-emerald-700 font-semibold">{prenom} {nom}</span>
-          </div>
-          <NotificationIcon />
-          <button onClick={() => { localStorage.removeItem('token'); navigate('/login') }} className="px-3 py-1.5 rounded-lg text-sm font-medium bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 cursor-pointer">Déconnexion</button>
-        </div>
-      </div>
-    </nav>
-  )
-}
 
 function StepHeader({ n, title }) {
   return (
     <div className="flex items-center gap-3 mb-5">
-      <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
+      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
         <span className="text-white font-extrabold text-xs">{n}</span>
       </div>
       <span className="text-sm font-bold text-gray-900">{title}</span>
@@ -48,6 +20,7 @@ function StepHeader({ n, title }) {
 
 export default function DeposerDossier() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [aides, setAides] = useState([])
   const [aideSelectionnee, setAideSelectionnee] = useState(null)
   const [succes, setSucces] = useState(false)
@@ -74,6 +47,13 @@ export default function DeposerDossier() {
   useEffect(() => {
     setAideSelectionnee(aides.find(a => a.id === aideIdWatch) || null)
   }, [aideIdWatch, aides])
+
+  useEffect(() => {
+    const preselect = searchParams.get('aide_id')
+    if (preselect && aides.length > 0) {
+      setValue('aide_id', preselect)
+    }
+  }, [aides])
 
   useEffect(() => {
     if (documentWatch?.length > 0) {
@@ -109,30 +89,30 @@ export default function DeposerDossier() {
     } else setAdresseSuggestions([])
   }
 
-  const inp = (err) => `w-full px-3 py-2.5 rounded-xl text-sm border ${err ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'} outline-none focus:border-blue-400 text-gray-800 transition-colors`
+  const inp = (err) => `w-full px-3 py-2.5 rounded-xl text-sm border ${err ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'} outline-none focus:border-indigo-400 text-gray-800 transition-colors`
 
   if (succes) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="bg-white border border-gray-100 rounded-2xl p-12 max-w-md w-full text-center shadow-sm">
+    <div className="min-h-screen flex items-center justify-center" style={{ background: '#f8f7ff' }}>
+      <div className="bg-white rounded-2xl p-12 max-w-md w-full text-center" style={{ border: '1px solid rgba(99,102,241,0.12)', boxShadow: '0 2px 12px rgba(99,102,241,0.06)' }}>
         <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-5 text-3xl">✅</div>
         <h1 className="text-2xl font-extrabold text-gray-900 mb-2 tracking-tight">Dossier soumis !</h1>
         <p className="text-sm text-gray-500 mb-6">Votre demande a bien été enregistrée.</p>
         <div className="bg-gray-50 border border-gray-100 rounded-xl p-5 mb-6">
           <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold mb-2">Numéro de dossier</p>
-          <p className="text-3xl font-extrabold text-blue-600 tracking-tight">{numeroDossier}</p>
+          <p className="text-3xl font-extrabold tracking-tight" style={{ color: '#6366f1' }}>{numeroDossier}</p>
         </div>
         <div className="flex gap-3">
           <Link to="/catalogue" className="flex-1 py-2.5 border border-gray-200 text-gray-700 text-sm font-semibold rounded-xl text-center no-underline hover:bg-gray-50">Catalogue</Link>
-          <Link to="/mon-espace" className="flex-1 py-2.5 bg-blue-600 text-white text-sm font-bold rounded-xl text-center no-underline hover:bg-blue-700">Suivre mon dossier →</Link>
+          <Link to="/mon-espace" className="btn-gradient flex-1 py-2.5 text-sm font-bold rounded-xl text-center no-underline" style={{ color: '#fff', fontFamily: 'inherit' }}>Suivre mon dossier →</Link>
         </div>
       </div>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar prenom={prenom} nom={nom} />
-      <div className="bg-white border-b border-gray-100 px-6 py-7">
+    <div className="min-h-screen" style={{ background: '#f8f7ff' }}>
+      <NavbarShared />
+      <div className="px-6 py-7" style={{ background: 'linear-gradient(135deg, #fafbff 0%, #f5f3ff 100%)', borderBottom: '1px solid #ede9fe' }}>
         <div className="max-w-3xl mx-auto">
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Déposer un dossier</h1>
           <p className="text-sm text-gray-400 mt-1">Remplissez le formulaire en 4 étapes pour soumettre votre demande.</p>
@@ -143,7 +123,7 @@ export default function DeposerDossier() {
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
 
           {/* Étape 1 */}
-          <div className="bg-white border border-gray-100 rounded-xl p-6 mb-4 shadow-sm">
+          <div className="bg-white rounded-2xl p-6 mb-4" style={{ border: '1px solid rgba(99,102,241,0.12)', boxShadow: '0 2px 12px rgba(99,102,241,0.06)' }}>
             <StepHeader n={1} title="Aide demandée" />
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1.5">Sélectionnez l'aide <span className="text-red-500">*</span></label>
@@ -155,10 +135,10 @@ export default function DeposerDossier() {
             </div>
             {aideSelectionnee && (
               <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 mt-4">
-                <p className="text-xs font-bold text-blue-600 uppercase tracking-wide mb-3">Informations sur cette aide</p>
+                <p className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: '#6366f1' }}>Informations sur cette aide</p>
                 <div className="grid grid-cols-2 gap-3">
                   {aideSelectionnee.type_aide && <div className="bg-white border border-gray-100 rounded-lg px-3 py-2.5"><p className="text-xs text-gray-400">Type</p><p className="text-sm font-bold text-gray-800 mt-0.5">{aideSelectionnee.type_aide}</p></div>}
-                  {(aideSelectionnee.montant_min || aideSelectionnee.montant_max) && <div className="bg-white border border-gray-100 rounded-lg px-3 py-2.5"><p className="text-xs text-gray-400">Montant</p><p className="text-sm font-bold text-blue-600 mt-0.5">{aideSelectionnee.montant_min?.toLocaleString() || '0'} – {aideSelectionnee.montant_max?.toLocaleString() || '∞'} €</p></div>}
+                  {(aideSelectionnee.montant_min || aideSelectionnee.montant_max) && <div className="bg-white border border-gray-100 rounded-lg px-3 py-2.5"><p className="text-xs text-gray-400">Montant</p><p className="text-sm font-bold mt-0.5" style={{ color: '#6366f1' }}>{aideSelectionnee.montant_min?.toLocaleString() || '0'} – {aideSelectionnee.montant_max?.toLocaleString() || '∞'} €</p></div>}
                   {aideSelectionnee.organisme_financeur && <div className="bg-white border border-gray-100 rounded-lg px-3 py-2.5"><p className="text-xs text-gray-400">Organisme</p><p className="text-sm font-bold text-gray-800 mt-0.5">{aideSelectionnee.organisme_financeur}</p></div>}
                 </div>
                 {aideSelectionnee.documents_requis && (
@@ -171,7 +151,7 @@ export default function DeposerDossier() {
           </div>
 
           {/* Étape 2 */}
-          <div className="bg-white border border-gray-100 rounded-xl p-6 mb-4 shadow-sm overflow-visible">
+          <div className="bg-white rounded-2xl p-6 mb-4 overflow-visible" style={{ border: '1px solid rgba(99,102,241,0.12)', boxShadow: '0 2px 12px rgba(99,102,241,0.06)' }}>
             <StepHeader n={2} title="Informations du demandeur" />
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div><label className="block text-xs font-semibold text-gray-600 mb-1.5">Nom / Raison sociale</label><input {...register('nom')} placeholder="SARL Dupont & Fils" className={inp(false)} /></div>
@@ -196,7 +176,7 @@ export default function DeposerDossier() {
           </div>
 
           {/* Étape 3 */}
-          <div className="bg-white border border-gray-100 rounded-xl p-6 mb-4 shadow-sm">
+          <div className="bg-white rounded-2xl p-6 mb-4" style={{ border: '1px solid rgba(99,102,241,0.12)', boxShadow: '0 2px 12px rgba(99,102,241,0.06)' }}>
             <StepHeader n={3} title="Détail de la demande" />
             <div className="flex flex-col gap-4">
               <div><label className="block text-xs font-semibold text-gray-600 mb-1.5">Montant demandé (€)</label><input {...register('montant')} placeholder="25000" className={inp(false)} /></div>
@@ -210,7 +190,7 @@ export default function DeposerDossier() {
           </div>
 
           {/* Étape 4 */}
-          <div className="bg-white border border-gray-100 rounded-xl p-6 mb-6 shadow-sm">
+          <div className="bg-white rounded-2xl p-6 mb-6" style={{ border: '1px solid rgba(99,102,241,0.12)', boxShadow: '0 2px 12px rgba(99,102,241,0.06)' }}>
             <StepHeader n={4} title="Documents justificatifs" />
             {aideSelectionnee?.documents_requis && (
               <div className="mb-4 px-3 py-2.5 bg-amber-50 border border-amber-100 rounded-lg text-xs font-semibold text-amber-700">
@@ -244,7 +224,8 @@ export default function DeposerDossier() {
           <div className="flex gap-3">
             <button type="button" className="flex-1 py-3 border border-gray-200 text-gray-700 text-sm font-semibold rounded-xl hover:bg-gray-50 transition-colors">Sauvegarder brouillon</button>
             <button type="submit" disabled={isSubmitting || !!erreurFichier}
-              className="flex-[2] py-3 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors">
+              className="btn-gradient flex-[2] py-3 text-sm font-bold rounded-xl disabled:opacity-60 disabled:cursor-not-allowed"
+              style={{ color: '#fff', border: 'none', cursor: 'pointer', borderRadius: 12, fontFamily: 'inherit' }}>
               {isSubmitting ? 'Envoi en cours...' : 'Soumettre le dossier →'}
             </button>
           </div>

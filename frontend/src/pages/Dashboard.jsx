@@ -1,82 +1,52 @@
 import { useState, useEffect } from 'react'
 import { SidebarLayout, IconFolder, IconList, IconUsers, IconLink, IconChart, IconSettings, IconUser } from './SidebarLayout'
 import api from '../api'
+import {
+  Chart as ChartJS,
+  ArcElement, Tooltip, Legend,
+  CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Filler,
+} from 'chart.js'
+import { Doughnut, Bar, Line } from 'react-chartjs-2'
+
+ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Filler)
 
 const ADMIN_NAV = [
-  { to: '/admin/dossiers', label: 'Dossiers', Icon: IconFolder },
-  { to: '/admin/aides', label: 'Gestion Aides', Icon: IconList },
-  { to: '/admin/utilisateurs', label: 'Utilisateurs', Icon: IconUsers },
-  { to: '/admin/affectations', label: 'Affectations', Icon: IconLink },
-  { to: '/admin/dashboard', label: 'Dashboard', Icon: IconChart },
-  { to: '/admin/parametres', label: 'Paramètres', Icon: IconSettings },
-  { to: '/profil', label: 'Profil', Icon: IconUser },
+  { to: '/admin/dossiers',      label: 'Dossiers',        Icon: IconFolder },
+  { to: '/admin/aides',         label: 'Gestion Aides',   Icon: IconList },
+  { to: '/admin/utilisateurs',  label: 'Utilisateurs',    Icon: IconUsers },
+  { to: '/admin/affectations',  label: 'Affectations',    Icon: IconLink },
+  { to: '/admin/dashboard',     label: 'Dashboard',       Icon: IconChart },
+  { to: '/admin/parametres',    label: 'Paramètres',      Icon: IconSettings },
+  { to: '/profil',              label: 'Profil',           Icon: IconUser },
 ]
 
 const ROLE_COLORS = {
-  admin: { bg: '#fef2f2', color: '#dc2626', label: 'Admin' },
+  admin:       { bg: '#fef2f2', color: '#dc2626', label: 'Admin' },
   instructeur: { bg: '#eff6ff', color: '#2563eb', label: 'Instructeur' },
-  demandeur: { bg: '#ecfdf5', color: '#059669', label: 'Demandeur' },
+  demandeur:   { bg: '#ecfdf5', color: '#059669', label: 'Demandeur' },
 }
 
-// SVG Donut Chart
-function DonutChart({ data, size = 140 }) {
-  const total = data.reduce((s, d) => s + d.value, 0)
-  if (total === 0) return <div style={{ width: size, height: size, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#94a3b8' }}>Vide</div>
-
-  const cx = size / 2, cy = size / 2, r = size / 2 - 12, innerR = size / 2 - 30
-  let cumAngle = -Math.PI / 2
-
-  const arcs = data.filter(d => d.value > 0).map(d => {
-    const angle = (d.value / total) * 2 * Math.PI
-    const x1 = cx + r * Math.cos(cumAngle), y1 = cy + r * Math.sin(cumAngle)
-    cumAngle += angle
-    const x2 = cx + r * Math.cos(cumAngle), y2 = cy + r * Math.sin(cumAngle)
-    const ix1 = cx + innerR * Math.cos(cumAngle - angle), iy1 = cy + innerR * Math.sin(cumAngle - angle)
-    const ix2 = cx + innerR * Math.cos(cumAngle), iy2 = cy + innerR * Math.sin(cumAngle)
-    const large = angle > Math.PI ? 1 : 0
-    return { ...d, path: `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} L ${ix2} ${iy2} A ${innerR} ${innerR} 0 ${large} 0 ${ix1} ${iy1} Z` }
-  })
-
-  return (
-    <svg width={size} height={size}>
-      {arcs.map((arc, i) => (
-        <path key={i} d={arc.path} fill={arc.color} opacity={0.9} />
-      ))}
-      <text x={cx} y={cy - 4} textAnchor="middle" fontSize="18" fontWeight="800" fill="#0f172a" fontFamily="Plus Jakarta Sans, sans-serif">{total}</text>
-      <text x={cx} y={cy + 14} textAnchor="middle" fontSize="10" fill="#94a3b8" fontFamily="Plus Jakarta Sans, sans-serif">total</text>
-    </svg>
-  )
+function getLast6Months() {
+  const months = []
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(1)
+    d.setMonth(d.getMonth() - i)
+    months.push({ label: d.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' }), year: d.getFullYear(), month: d.getMonth() })
+  }
+  return months
 }
 
-// Bar Chart SVG
-function BarChart({ data, height = 100 }) {
-  const max = Math.max(...data.map(d => d.value), 1)
-
-  return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: height + 32, paddingBottom: 20, position: 'relative' }}>
-      {data.map((item, i) => {
-        const barH = item.value > 0 ? Math.max((item.value / max) * height, 6) : 4
-        return (
-          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', position: 'relative' }}>
-            {item.value > 0 && (
-              <span style={{ fontSize: 9, color: '#64748b', fontWeight: 600, marginBottom: 2 }}>{item.value}</span>
-            )}
-            <div style={{ width: '100%', height: barH, borderRadius: '3px 3px 0 0', background: item.value > 0 ? '#2563eb' : '#e8ecf4', opacity: item.value > 0 ? 0.85 : 1 }} />
-            <span style={{ fontSize: 9, color: '#94a3b8', marginTop: 4, whiteSpace: 'nowrap' }}>{item.label}</span>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
+const CHART_FONT = { family: 'Inter, sans-serif', size: 12 }
+const GRID_COLOR = '#f1f5f9'
 
 function Dashboard() {
-  const [dossiers, setDossiers] = useState([])
-  const [aides, setAides] = useState([])
+  const [dossiers, setDossiers]       = useState([])
+  const [aides, setAides]             = useState([])
   const [utilisateurs, setUtilisateurs] = useState([])
-  const [chargement, setChargement] = useState(true)
+  const [chargement, setChargement]   = useState(true)
 
-  const token = localStorage.getItem('token')
+  const token   = localStorage.getItem('token')
   const payload = token ? JSON.parse(atob(token.split('.')[1])) : null
 
   useEffect(() => {
@@ -85,27 +55,139 @@ function Dashboard() {
       .catch(() => setChargement(false))
   }, [])
 
-  const tauxAcceptation = dossiers.length ? Math.round(dossiers.filter(d => d.statut === 'accepte').length / dossiers.length * 100) : 0
+  const acceptes       = dossiers.filter(d => d.statut === 'accepte').length
+  const refuses        = dossiers.filter(d => d.statut === 'refuse').length
+  const enInstruction  = dossiers.filter(d => d.statut === 'en_instruction').length
+  const enAttente      = dossiers.filter(d => d.statut === 'depose').length
+  const brouillons     = dossiers.filter(d => d.statut === 'brouillon').length
+  const tauxAcceptation = dossiers.length ? Math.round(acceptes / dossiers.length * 100) : 0
 
-  const mois = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
-  const dataMois = mois.map((label, i) => ({
-    label,
-    value: dossiers.filter(d => new Date(d.cree_le).getMonth() === i).length
-  }))
+  const months = getLast6Months()
 
-  const donutStatuts = [
-    { label: 'Brouillon', value: dossiers.filter(d => d.statut === 'brouillon').length, color: '#e2e8f0' },
-    { label: 'Déposé', value: dossiers.filter(d => d.statut === 'depose').length, color: '#3b82f6' },
-    { label: 'En instruction', value: dossiers.filter(d => d.statut === 'en_instruction').length, color: '#f59e0b' },
-    { label: 'Accepté', value: dossiers.filter(d => d.statut === 'accepte').length, color: '#10b981' },
-    { label: 'Refusé', value: dossiers.filter(d => d.statut === 'refuse').length, color: '#ef4444' },
+  // --- Donut : statuts ---
+  const donutStatutsData = {
+    labels: ['Brouillon', 'Déposé', 'En instruction', 'Accepté', 'Refusé'],
+    datasets: [{
+      data: [brouillons, enAttente, enInstruction, acceptes, refuses],
+      backgroundColor: ['#e2e8f0', '#6366f1', '#f59e0b', '#10b981', '#ef4444'],
+      borderColor: '#fff',
+      borderWidth: 3,
+      hoverOffset: 6,
+    }],
+  }
+
+  // --- Donut : rôles utilisateurs ---
+  const donutRolesData = {
+    labels: ['Admins', 'Instructeurs', 'Demandeurs'],
+    datasets: [{
+      data: [
+        utilisateurs.filter(u => u.role === 'admin').length,
+        utilisateurs.filter(u => u.role === 'instructeur').length,
+        utilisateurs.filter(u => u.role === 'demandeur').length,
+      ],
+      backgroundColor: ['#ef4444', '#6366f1', '#10b981'],
+      borderColor: '#fff',
+      borderWidth: 3,
+      hoverOffset: 6,
+    }],
+  }
+
+  const donutOptions = (total, label) => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '68%',
+    plugins: {
+      legend: { position: 'bottom', labels: { padding: 14, font: CHART_FONT, usePointStyle: true } },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.label} : ${ctx.parsed}` } },
+    },
+  })
+
+  // --- Line : évolution 6 mois ---
+  const lineData = {
+    labels: months.map(m => m.label),
+    datasets: [
+      {
+        label: 'Déposés',
+        data: months.map(m => dossiers.filter(d => {
+          const dt = new Date(d.cree_le)
+          return dt.getFullYear() === m.year && dt.getMonth() === m.month
+        }).length),
+        borderColor: '#6366f1',
+        backgroundColor: 'rgba(99,102,241,0.10)',
+        fill: true,
+        tension: 0.42,
+        pointRadius: 4,
+        pointBackgroundColor: '#6366f1',
+      },
+      {
+        label: 'Acceptés',
+        data: months.map(m => dossiers.filter(d => {
+          const dt = new Date(d.cree_le)
+          return d.statut === 'accepte' && dt.getFullYear() === m.year && dt.getMonth() === m.month
+        }).length),
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16,185,129,0.08)',
+        fill: true,
+        tension: 0.42,
+        pointRadius: 4,
+        pointBackgroundColor: '#10b981',
+      },
+      {
+        label: 'Refusés',
+        data: months.map(m => dossiers.filter(d => {
+          const dt = new Date(d.cree_le)
+          return d.statut === 'refuse' && dt.getFullYear() === m.year && dt.getMonth() === m.month
+        }).length),
+        borderColor: '#ef4444',
+        backgroundColor: 'rgba(239,68,68,0.07)',
+        fill: true,
+        tension: 0.42,
+        pointRadius: 4,
+        pointBackgroundColor: '#ef4444',
+      },
+    ],
+  }
+  const lineOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'top', labels: { padding: 16, font: CHART_FONT, usePointStyle: true } },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: CHART_FONT } },
+      y: { beginAtZero: true, grid: { color: GRID_COLOR }, ticks: { stepSize: 1, font: CHART_FONT } },
+    },
+  }
+
+  // --- Bar horizontal : aides par type ---
+  const aidesTypes = [
+    { label: 'Subvention',  key: 'subvention',  color: 'rgba(99,102,241,0.75)' },
+    { label: 'Prêt',        key: 'pret',         color: 'rgba(139,92,246,0.75)' },
+    { label: 'Exonération', key: 'exoneration',  color: 'rgba(16,185,129,0.75)' },
+    { label: 'Formation',   key: 'formation',    color: 'rgba(245,158,11,0.75)' },
   ]
-
-  const donutRoles = [
-    { label: 'Admins', value: utilisateurs.filter(u => u.role === 'admin').length, color: '#ef4444' },
-    { label: 'Instructeurs', value: utilisateurs.filter(u => u.role === 'instructeur').length, color: '#6366f1' },
-    { label: 'Demandeurs', value: utilisateurs.filter(u => u.role === 'demandeur').length, color: '#10b981' },
-  ]
+  const barAidesData = {
+    labels: aidesTypes.map(t => t.label),
+    datasets: [{
+      label: 'Nombre d\'aides',
+      data: aidesTypes.map(t => aides.filter(a => a.type_aide === t.key).length),
+      backgroundColor: aidesTypes.map(t => t.color),
+      borderRadius: 7,
+      barPercentage: 0.6,
+    }],
+  }
+  const barAidesOptions = {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+    },
+    scales: {
+      x: { beginAtZero: true, grid: { color: GRID_COLOR }, ticks: { stepSize: 1, font: CHART_FONT } },
+      y: { grid: { display: false }, ticks: { font: CHART_FONT } },
+    },
+  }
 
   if (chargement) return (
     <SidebarLayout navItems={ADMIN_NAV} role="admin" prenom={payload?.prenom || ''} nom={payload?.nom || ''}>
@@ -123,12 +205,12 @@ function Dashboard() {
       {/* KPIs */}
       <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
         {[
-          { label: 'Total Dossiers', value: dossiers.length, sub: `${dossiers.filter(d => d.statut === 'depose').length} en attente`, color: '#2563eb' },
-          { label: 'Aides Actives', value: aides.filter(a => a.statut === 'active').length, sub: `${aides.length} au total`, color: '#059669' },
-          { label: 'Utilisateurs', value: utilisateurs.length, sub: `${utilisateurs.filter(u => u.role === 'demandeur').length} demandeurs`, color: '#7c3aed' },
-          { label: 'Taux Acceptation', value: `${tauxAcceptation}%`, sub: `${dossiers.filter(d => d.statut === 'accepte').length} acceptés`, color: '#d97706' },
+          { label: 'Total Dossiers',    value: dossiers.length,                                sub: `${enAttente} en attente`,                           color: '#6366f1' },
+          { label: 'Aides Actives',     value: aides.filter(a => a.statut === 'active').length, sub: `${aides.length} au total`,                          color: '#10b981' },
+          { label: 'Utilisateurs',      value: utilisateurs.length,                             sub: `${utilisateurs.filter(u=>u.role==='demandeur').length} demandeurs`, color: '#7c3aed' },
+          { label: 'Taux Acceptation',  value: `${tauxAcceptation}%`,                          sub: `${acceptes} acceptés`,                              color: '#f59e0b' },
         ].map((kpi, i) => (
-          <div className="kpi-card" key={i}>
+          <div className="kpi-card" key={i} style={{ borderTop: `3px solid ${kpi.color}` }}>
             <div className="kpi-label">{kpi.label}</div>
             <div className="kpi-value" style={{ color: kpi.color }}>{kpi.value}</div>
             <div className="kpi-sub">{kpi.sub}</div>
@@ -136,79 +218,54 @@ function Dashboard() {
         ))}
       </div>
 
-      {/* Charts row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14, width: '100%' }}>
-        {/* Statuts donut */}
-        <div className="card" style={{ padding: 20 }}>
-          <div className="card-title" style={{ marginBottom: 16 }}>Dossiers par statut</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-            <DonutChart data={donutStatuts} size={140} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
-              {donutStatuts.map((s, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: 3, background: s.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, color: '#64748b', flex: 1 }}>{s.label}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{s.value}</span>
-                </div>
-              ))}
-            </div>
+      {/* Ligne 1 : Donut statuts + Line évolution */}
+      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 14, marginBottom: 14 }}>
+        <div className="card" style={{ padding: 22 }}>
+          <div className="card-title" style={{ marginBottom: 4 }}>Dossiers par statut</div>
+          <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 14 }}>{dossiers.length} dossiers au total</p>
+          <div style={{ height: 220 }}>
+            {dossiers.length === 0
+              ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#cbd5e1', fontSize: 13 }}>Aucune donnée</div>
+              : <Doughnut data={donutStatutsData} options={donutOptions(dossiers.length, 'dossiers')} />
+            }
           </div>
         </div>
 
-        {/* Dossiers par mois bars */}
-        <div className="card" style={{ padding: 20 }}>
-          <div className="card-title" style={{ marginBottom: 16 }}>Dossiers déposés par mois</div>
-          <BarChart data={dataMois} height={100} />
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14, width: '100%' }}>
-        {/* Rôles donut */}
-        <div className="card" style={{ padding: 20 }}>
-          <div className="card-title" style={{ marginBottom: 16 }}>Répartition des utilisateurs</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-            <DonutChart data={donutRoles} size={120} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
-              {donutRoles.map((r, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: 3, background: r.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, color: '#64748b', flex: 1 }}>{r.label}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{r.value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Aides par type */}
-        <div className="card" style={{ padding: 20 }}>
-          <div className="card-title" style={{ marginBottom: 16 }}>Aides par type</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[
-              { label: 'Subventions', key: 'subvention', color: '#3b82f6' },
-              { label: 'Prêts', key: 'pret', color: '#8b5cf6' },
-              { label: 'Exonérations', key: 'exoneration', color: '#10b981' },
-              { label: 'Formations', key: 'formation', color: '#f59e0b' },
-            ].map(t => {
-              const count = aides.filter(a => a.type_aide === t.key).length
-              const pct = aides.length ? Math.round(count / aides.length * 100) : 0
-              return (
-                <div key={t.key}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
-                    <span style={{ color: '#64748b' }}>{t.label}</span>
-                    <span style={{ fontWeight: 700, color: '#0f172a' }}>{count} <span style={{ color: '#94a3b8', fontWeight: 400 }}>({pct}%)</span></span>
-                  </div>
-                  <div style={{ background: '#f1f5f9', borderRadius: 100, height: 6 }}>
-                    <div style={{ width: `${pct}%`, height: 6, borderRadius: 100, background: t.color, transition: 'width 0.6s ease' }} />
-                  </div>
-                </div>
-              )
-            })}
+        <div className="card" style={{ padding: 22 }}>
+          <div className="card-title" style={{ marginBottom: 4 }}>Évolution des dossiers</div>
+          <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 14 }}>6 derniers mois</p>
+          <div style={{ height: 220 }}>
+            <Line data={lineData} options={lineOptions} />
           </div>
         </div>
       </div>
 
-      {/* Derniers utilisateurs */}
+      {/* Ligne 2 : Donut rôles + Bar aides par type */}
+      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 14, marginBottom: 14 }}>
+        <div className="card" style={{ padding: 22 }}>
+          <div className="card-title" style={{ marginBottom: 4 }}>Répartition utilisateurs</div>
+          <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 14 }}>{utilisateurs.length} comptes au total</p>
+          <div style={{ height: 220 }}>
+            {utilisateurs.length === 0
+              ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#cbd5e1', fontSize: 13 }}>Aucune donnée</div>
+              : <Doughnut data={donutRolesData} options={donutOptions(utilisateurs.length, 'utilisateurs')} />
+            }
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: 22 }}>
+          <div className="card-title" style={{ marginBottom: 4 }}>Aides par type</div>
+          <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 14 }}>{aides.length} aides enregistrées</p>
+          <div style={{ height: 220 }}>
+            {aides.length === 0
+              ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#cbd5e1', fontSize: 13 }}>Aucune donnée</div>
+              : <Bar data={barAidesData} options={barAidesOptions} />
+            }
+          </div>
+        </div>
+      </div>
+
+      {/* Table : derniers utilisateurs */}
       <div className="card">
         <div className="card-header">
           <span className="card-title">Derniers utilisateurs inscrits</span>
@@ -216,9 +273,7 @@ function Dashboard() {
         </div>
         <table className="data-table">
           <thead>
-            <tr>
-              {['Nom', 'Email', 'Rôle', 'Inscription'].map(col => <th key={col}>{col}</th>)}
-            </tr>
+            <tr>{['Nom', 'Email', 'Rôle', 'Inscription'].map(col => <th key={col}>{col}</th>)}</tr>
           </thead>
           <tbody>
             {utilisateurs.slice(0, 8).map((u, i) => {

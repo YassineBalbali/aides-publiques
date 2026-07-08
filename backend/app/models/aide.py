@@ -32,6 +32,8 @@ class Aide(Base):
 
     # Nouveaux champs
     beneficiaires = Column(String(300))
+    territoire = Column(String(50), nullable=True)
+    secteur = Column(String(100), nullable=True)
     date_ouverture = Column(Date, nullable=True)
     date_fermeture = Column(Date, nullable=True)
     documents_requis = Column(Text)

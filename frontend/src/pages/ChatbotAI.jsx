@@ -9,43 +9,39 @@ const SUGGESTIONS = [
 ]
 
 const IconSend = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
   </svg>
 )
 
 const IconClose = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
   </svg>
 )
 
 const IconChat = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
       d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
   </svg>
 )
 
 export default function ChatbotAI() {
-  const [ouvert, setOuvert] = useState(false)
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: "Bonjour ! 👋 Je suis votre assistant virtuel Aides Publiques. Je suis là pour vous aider à naviguer sur la plateforme, déposer vos dossiers et trouver les aides qui vous correspondent. Comment puis-je vous aider ?",
-    }
-  ])
-  const [input, setInput] = useState('')
+  const [ouvert, setOuvert]         = useState(false)
+  const [messages, setMessages]     = useState([{
+    role: 'assistant',
+    content: "Bonjour ! 👋 Je suis votre assistant virtuel Aides Publiques. Je suis là pour vous aider à naviguer sur la plateforme, déposer vos dossiers et trouver les aides qui vous correspondent. Comment puis-je vous aider ?",
+  }])
+  const [input, setInput]           = useState('')
   const [chargement, setChargement] = useState(false)
   const [notification, setNotification] = useState(true)
   const [tokenVersion, setTokenVersion] = useState(0)
   const messagesEndRef = useRef(null)
 
-  // Écoute les changements de localStorage (déconnexion / reconnexion)
   useEffect(() => {
     const onStorageChange = () => setTokenVersion(v => v + 1)
     window.addEventListener('storage', onStorageChange)
-    // Polling pour les changements dans le même onglet (storage event ne se déclenche que cross-tab)
     const interval = setInterval(() => {
       const currentToken = localStorage.getItem('token')
       if (currentToken !== window.__lastToken) {
@@ -53,134 +49,176 @@ export default function ChatbotAI() {
         setTokenVersion(v => v + 1)
       }
     }, 1000)
-    return () => {
-      window.removeEventListener('storage', onStorageChange)
-      clearInterval(interval)
-    }
+    return () => { window.removeEventListener('storage', onStorageChange); clearInterval(interval) }
   }, [])
 
   useEffect(() => {
-    if (ouvert) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-      setNotification(false)
-    }
+    if (ouvert) { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); setNotification(false) }
   }, [messages, ouvert])
 
   const envoyerMessage = async (texte) => {
     const messageTexte = texte || input.trim()
     if (!messageTexte || chargement) return
-
     const nouveauxMessages = [...messages, { role: 'user', content: messageTexte }]
-    setMessages(nouveauxMessages)
-    setInput('')
-    setChargement(true)
-
+    setMessages(nouveauxMessages); setInput(''); setChargement(true)
     try {
-      const data = await api.post('/chatbot/message', {
-        messages: nouveauxMessages.map(m => ({ role: m.role, content: m.content })),
-      })
-      const reponse = data.data.response || "Désolé, je n'ai pas pu traiter votre demande."
-      setMessages(prev => [...prev, { role: 'assistant', content: reponse }])
+      const data = await api.post('/chatbot/message', { messages: nouveauxMessages.map(m => ({ role: m.role, content: m.content })) })
+      setMessages(prev => [...prev, { role: 'assistant', content: data.data.response || "Désolé, je n'ai pas pu traiter votre demande." }])
     } catch {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: "❌ Une erreur s'est produite. Veuillez réessayer dans quelques instants."
-      }])
-    } finally {
-      setChargement(false)
-    }
+      setMessages(prev => [...prev, { role: 'assistant', content: "❌ Une erreur s'est produite. Veuillez réessayer dans quelques instants." }])
+    } finally { setChargement(false) }
   }
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      envoyerMessage()
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); envoyerMessage() }
   }
 
-  const token = localStorage.getItem('token')
+  const token   = localStorage.getItem('token')
   const payload = token ? JSON.parse(atob(token.split('.')[1])) : null
-  // Afficher pour les demandeurs et les visiteurs non connectés, masquer pour admin et instructeur
   if (payload && (payload.role === 'admin' || payload.role === 'instructeur')) return null
 
   return (
     <>
-      {/* Bouton flottant — z-index plus élevé que la fenêtre */}
-      <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-end gap-2">
+      {/* Bouton flottant */}
+      <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 60, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
 
-        {/* Bulle suggestion */}
+        {/* Bulle notification */}
         {!ouvert && notification && (
-          <div className="bg-white rounded-xl shadow-lg border border-gray-100 px-4 py-3 max-w-xs">
-            <p className="text-sm text-gray-700 font-semibold">💬 Besoin d'aide ?</p>
-            <p className="text-xs text-gray-400 mt-0.5">Je suis disponible pour vous guider !</p>
+          <div style={{
+            background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+            border: '1px solid rgba(99,102,241,0.18)', borderRadius: 14,
+            boxShadow: '0 8px 32px rgba(99,102,241,0.18)', padding: '12px 16px', maxWidth: 220,
+          }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#1e1b4b', margin: 0 }}>💬 Besoin d'aide ?</p>
+            <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 3, marginBottom: 0 }}>Je suis disponible pour vous guider !</p>
           </div>
         )}
 
+        {/* Bouton principal */}
         <button
           onClick={() => setOuvert(!ouvert)}
-          className="w-14 h-14 rounded-2xl bg-blue-600 hover:bg-blue-700 flex items-center justify-center text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all relative"
+          className="btn-gradient"
+          style={{
+            width: 52, height: 52, borderRadius: 16, border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
+            boxShadow: '0 8px 28px rgba(99,102,241,0.5)', position: 'relative',
+          }}
         >
           {ouvert ? <IconClose /> : <IconChat />}
           {!ouvert && notification && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-[9px] font-bold">1</span>
+            <span style={{
+              position: 'absolute', top: -4, right: -4, width: 18, height: 18,
+              background: '#ef4444', borderRadius: '50%', border: '2px solid #fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 9, fontWeight: 800, color: '#fff',
+            }}>1</span>
           )}
         </button>
       </div>
 
       {/* Fenêtre chat */}
       {ouvert && (
-        <div className="fixed bottom-24 right-6 z-50 w-96 h-[560px] bg-white rounded-2xl shadow-2xl border border-gray-100 flex flex-col overflow-hidden">
+        <div className="anim-slideIn" style={{
+          position: 'fixed', bottom: 90, right: 24, zIndex: 50,
+          width: 384, height: 560,
+          background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+          borderRadius: 20, border: '1px solid rgba(99,102,241,0.18)',
+          boxShadow: '0 24px 64px rgba(99,102,241,0.22), 0 4px 16px rgba(0,0,0,0.08)',
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        }}>
 
           {/* Header */}
-          <div className="px-5 py-4 bg-blue-600 flex items-center gap-3 flex-shrink-0">
-            <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-extrabold text-xs">AI</span>
+          <div style={{
+            padding: '16px 18px',
+            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+            display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0,
+          }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 12,
+              background: 'rgba(255,255,255,0.2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <span style={{ color: '#fff', fontWeight: 800, fontSize: 11 }}>AI</span>
             </div>
-            <div className="flex-1">
-              <p className="text-white font-bold text-sm">Assistant Aides Publiques</p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                <p className="text-blue-100 text-xs">En ligne — Répond instantanément</p>
+            <div style={{ flex: 1 }}>
+              <p style={{ color: '#fff', fontWeight: 700, fontSize: 13.5, margin: 0 }}>Assistant Aides Publiques</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 6px rgba(74,222,128,0.8)' }} />
+                <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, margin: 0 }}>En ligne — Répond instantanément</p>
               </div>
             </div>
-            <button
-              onClick={() => setOuvert(false)}
-              className="w-7 h-7 bg-white/20 hover:bg-white/30 rounded-lg flex items-center justify-center text-white transition-colors"
-            >
+            <button onClick={() => setOuvert(false)} style={{
+              width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.18)',
+              border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', transition: 'background 0.2s',
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.28)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.18)'}>
               <IconClose />
             </button>
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3 bg-gray-50">
+          <div style={{
+            flex: 1, overflowY: 'auto', padding: '16px 14px',
+            display: 'flex', flexDirection: 'column', gap: 12,
+            background: '#f8f7ff',
+          }}>
             {messages.map((msg, i) => (
-              <div key={i} className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+              <div key={i} style={{ display: 'flex', gap: 8, flexDirection: msg.role === 'user' ? 'row-reverse' : 'row' }}>
+
                 {msg.role === 'assistant' && (
-                  <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white flex-shrink-0 mt-0.5">
-                    <span className="text-[10px] font-bold">AI</span>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: 9, flexShrink: 0, marginTop: 2,
+                    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <span style={{ color: '#fff', fontSize: 9, fontWeight: 800 }}>AI</span>
                   </div>
                 )}
-                <div className={`max-w-[75%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
-                  msg.role === 'user'
-                    ? 'bg-blue-600 text-white rounded-tr-sm'
-                    : 'bg-white text-gray-700 rounded-tl-sm shadow-sm border border-gray-100'
-                }`}>
+
+                <div style={{
+                  maxWidth: '75%', padding: '10px 14px', fontSize: 13, lineHeight: 1.55,
+                  whiteSpace: 'pre-wrap', borderRadius: 16,
+                  ...(msg.role === 'user' ? {
+                    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                    color: '#fff', borderTopRightRadius: 4,
+                    boxShadow: '0 4px 14px rgba(99,102,241,0.35)',
+                  } : {
+                    background: '#fff', color: '#374151',
+                    border: '1px solid rgba(99,102,241,0.12)',
+                    borderTopLeftRadius: 4,
+                    boxShadow: '0 2px 8px rgba(99,102,241,0.06)',
+                  }),
+                }}>
                   {msg.content}
                 </div>
               </div>
             ))}
 
+            {/* Typing indicator */}
             {chargement && (
-              <div className="flex gap-2">
-                <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white flex-shrink-0">
-                  <span className="text-[10px] font-bold">AI</span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: 9, flexShrink: 0,
+                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <span style={{ color: '#fff', fontSize: 9, fontWeight: 800 }}>AI</span>
                 </div>
-                <div className="bg-white border border-gray-100 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
-                  <div className="flex gap-1 items-center">
-                    <div className="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <div className="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <div className="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                  </div>
+                <div style={{
+                  background: '#fff', border: '1px solid rgba(99,102,241,0.12)',
+                  borderRadius: 16, borderTopLeftRadius: 4,
+                  padding: '12px 16px', display: 'flex', gap: 5, alignItems: 'center',
+                  boxShadow: '0 2px 8px rgba(99,102,241,0.06)',
+                }}>
+                  {[0, 150, 300].map(delay => (
+                    <div key={delay} className="animate-bounce" style={{
+                      width: 7, height: 7, borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                      animationDelay: `${delay}ms`,
+                    }} />
+                  ))}
                 </div>
               </div>
             )}
@@ -189,10 +227,19 @@ export default function ChatbotAI() {
 
           {/* Suggestions */}
           {messages.length === 1 && (
-            <div className="px-4 py-2.5 flex gap-2 flex-wrap border-t border-gray-100 bg-white">
+            <div style={{
+              padding: '10px 14px', display: 'flex', gap: 7, flexWrap: 'wrap',
+              borderTop: '1px solid rgba(99,102,241,0.1)', background: '#fff',
+            }}>
               {SUGGESTIONS.map((s, i) => (
-                <button key={i} onClick={() => envoyerMessage(s)}
-                  className="text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-100 px-3 py-1.5 rounded-lg transition-colors font-semibold">
+                <button key={i} onClick={() => envoyerMessage(s)} style={{
+                  fontSize: 11, fontWeight: 600, fontFamily: 'inherit',
+                  color: '#6366f1', background: 'rgba(99,102,241,0.07)',
+                  border: '1px solid rgba(99,102,241,0.18)', borderRadius: 8,
+                  padding: '6px 11px', cursor: 'pointer', transition: 'all 0.2s',
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.14)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,0.35)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.07)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,0.18)' }}>
                   {s}
                 </button>
               ))}
@@ -200,20 +247,36 @@ export default function ChatbotAI() {
           )}
 
           {/* Input */}
-          <div className="px-4 py-3 border-t border-gray-100 bg-white flex gap-2 items-end flex-shrink-0">
+          <div style={{
+            padding: '12px 14px', borderTop: '1px solid rgba(99,102,241,0.1)',
+            background: '#fff', display: 'flex', gap: 9, alignItems: 'flex-end', flexShrink: 0,
+          }}>
             <textarea
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Posez votre question..."
               rows={1}
-              className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-700 outline-none focus:border-blue-500 resize-none transition-colors bg-gray-50"
-              style={{ maxHeight: '80px' }}
+              style={{
+                flex: 1, border: '1px solid rgba(99,102,241,0.2)', borderRadius: 12,
+                padding: '10px 14px', fontSize: 13, color: '#374151',
+                outline: 'none', resize: 'none', maxHeight: 80,
+                background: '#f8f7ff', fontFamily: 'inherit',
+                transition: 'border-color 0.2s, box-shadow 0.2s',
+              }}
+              onFocus={e => { e.target.style.borderColor = 'rgba(99,102,241,0.6)'; e.target.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.12)' }}
+              onBlur={e => { e.target.style.borderColor = 'rgba(99,102,241,0.2)'; e.target.style.boxShadow = 'none' }}
             />
             <button
               onClick={() => envoyerMessage()}
               disabled={!input.trim() || chargement}
-              className="w-10 h-10 rounded-xl bg-blue-600 hover:bg-blue-700 flex items-center justify-center text-white disabled:opacity-40 transition-all flex-shrink-0"
+              className="btn-gradient"
+              style={{
+                width: 40, height: 40, borderRadius: 12, border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
+                flexShrink: 0, opacity: (!input.trim() || chargement) ? 0.45 : 1,
+                transition: 'opacity 0.2s',
+              }}
             >
               <IconSend />
             </button>

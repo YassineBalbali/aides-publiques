@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { SidebarLayout, IconFolder, IconList, IconUsers, IconLink, IconChart, IconSettings, IconUser } from './SidebarLayout'
 import api from '../api'
 
@@ -26,6 +27,7 @@ function EspaceAdmin() {
   const [chargement, setChargement] = useState(true)
   const [recherche, setRecherche] = useState('')
   const [filtreStatut, setFiltreStatut] = useState('')
+  const navigate = useNavigate()
   const token = localStorage.getItem('token')
   const payload = token ? JSON.parse(atob(token.split('.')[1])) : null
 
@@ -103,7 +105,7 @@ function EspaceAdmin() {
             ) : dossiersFiltres.map((d) => {
               const s = STATUT[d.statut] || STATUT.brouillon
               return (
-                <tr key={d.id}>
+                <tr key={d.id} onClick={() => navigate(`/admin/dossier/${d.id}`)} style={{ cursor: 'pointer' }}>
                   <td><span style={{ fontWeight: 700, color: '#2563eb', fontSize: 13 }}>{d.numero}</span></td>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
@@ -124,7 +126,7 @@ function EspaceAdmin() {
                   <td>
                     <span className="badge" style={{ background: s.bg, color: s.color }}>{s.label}</span>
                   </td>
-                  <td>
+                  <td onClick={e => e.stopPropagation()}>
                     <div className="action-row">
                       <button className="btn btn-sm btn-success-sm" onClick={() => changerStatut(d.id, 'accepte')}>✓ Accepter</button>
                       <button className="btn btn-sm btn-danger-sm" onClick={() => changerStatut(d.id, 'refuse')}>✕ Refuser</button>

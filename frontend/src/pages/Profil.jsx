@@ -2,40 +2,10 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import ProfilAdmin from './ProfilAdmin'
 import api from '../api'
-import { NotificationIcon } from './Notifications'
+import NavbarShared from '../components/NavbarShared'
 
 const ROLE_LABEL = { admin: 'Administrateur', instructeur: 'Instructeur', demandeur: 'Demandeur' }
 const ROLE_CLS = { admin: 'bg-red-50 text-red-600 border border-red-100', instructeur: 'bg-blue-50 text-blue-700 border border-blue-100', demandeur: 'bg-emerald-50 text-emerald-700 border border-emerald-100' }
-
-function Navbar() {
-  const navigate = useNavigate()
-  const token = localStorage.getItem('token')
-  const payload = token ? JSON.parse(atob(token.split('.')[1])) : null
-  const nomPlateforme = localStorage.getItem('plateforme_nom') || 'Aides Publiques'
-  return (
-    <nav className="bg-white border-b border-gray-100 sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2.5 no-underline">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0"><span className="text-white font-bold text-xs">AP</span></div>
-          <span className="font-bold text-gray-900 text-sm">{nomPlateforme}</span>
-        </Link>
-        <div className="flex items-center gap-0.5">
-          {[{ to: '/', l: 'Accueil' }, { to: '/catalogue', l: 'Catalogue' }, { to: '/deposer', l: 'Déposer' }, { to: '/mon-espace', l: 'Mon espace' }, { to: '/profil', l: 'Profil' }].map(({ to, l }) => (
-            <Link key={to} to={to} className={`px-3 py-1.5 rounded-lg text-sm font-medium no-underline transition-colors ${to === '/profil' ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'}`}>{l}</Link>
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            <span className="text-xs text-emerald-700 font-semibold">{payload?.prenom} {payload?.nom}</span>
-          </div>
-          <NotificationIcon />
-          <button onClick={() => { localStorage.removeItem('token'); navigate('/login') }} className="px-3 py-1.5 rounded-lg text-sm font-medium bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 cursor-pointer">Déconnexion</button>
-        </div>
-      </div>
-    </nav>
-  )
-}
 
 export default function Profil() {
   const token = localStorage.getItem('token')
@@ -91,6 +61,13 @@ export default function Profil() {
     } catch { showMsg('Erreur photo', true) }
   }
 
+  const supprimerPhoto = async () => {
+    try {
+      await api.delete(`/auth/profil/${userId}/photo`)
+      localStorage.removeItem('user_photo'); setProfil(prev => ({ ...prev, photo: null })); showMsg('Photo supprimée')
+    } catch { showMsg('Erreur lors de la suppression', true) }
+  }
+
   const handleLoc = async (e) => {
     const val = e.target.value; setForm({ ...form, localisation: val })
     if (val.length >= 2) {
@@ -99,14 +76,19 @@ export default function Profil() {
     } else setLocSuggestions([])
   }
 
-  const inp = `w-full px-3 py-2.5 rounded-xl text-sm border border-gray-200 outline-none focus:border-blue-400 bg-gray-50 text-gray-800 font-medium transition-colors`
+  const inp = `w-full px-3 py-2.5 rounded-xl text-sm border border-gray-200 outline-none focus:border-indigo-400 bg-gray-50 text-gray-800 font-medium transition-colors`
 
-  if (chargement) return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><Navbar /><div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>
+  if (chargement) return (
+    <div className="min-h-screen flex items-center justify-center" style={{ background: '#f8f7ff' }}>
+      <NavbarShared />
+      <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <div className="bg-white border-b border-gray-100 px-6 py-7">
+    <div className="min-h-screen" style={{ background: '#f8f7ff' }}>
+      <NavbarShared />
+      <div className="px-6 py-7" style={{ background: 'linear-gradient(135deg, #fafbff 0%, #f5f3ff 100%)', borderBottom: '1px solid #ede9fe' }}>
         <div className="max-w-4xl mx-auto">
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Mon profil</h1>
           <p className="text-sm text-gray-400 mt-1">Gérez vos informations personnelles</p>
@@ -118,12 +100,12 @@ export default function Profil() {
         {erreur && <div className="mb-4 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm font-semibold text-red-600">✕ {erreur}</div>}
 
         {/* Avatar */}
-        <div className="bg-white border border-gray-100 rounded-xl p-5 mb-5 shadow-sm flex items-center gap-5">
+        <div className="bg-white rounded-2xl p-5 mb-5 flex items-center gap-5" style={{ border: '1px solid rgba(99,102,241,0.12)', boxShadow: '0 2px 12px rgba(99,102,241,0.06)' }}>
           <div className="relative flex-shrink-0">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center overflow-hidden">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center overflow-hidden">
               {profil?.photo ? <img src={profil.photo} alt="" className="w-full h-full object-cover" /> : <span className="text-white font-extrabold text-2xl">{(profil?.prenom?.[0] || '?').toUpperCase()}</span>}
             </div>
-            <label className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-blue-600 border-2 border-white flex items-center justify-center cursor-pointer">
+            <label className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center cursor-pointer" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
               <span className="text-white text-xs">✎</span>
               <input type="file" accept="image/*" className="hidden" onChange={uploadPhoto} />
             </label>
@@ -132,12 +114,17 @@ export default function Profil() {
             <p className="text-lg font-extrabold text-gray-900 tracking-tight">{profil?.prenom} {profil?.nom}</p>
             <p className="text-sm text-gray-500 mt-0.5">{profil?.email}</p>
             <span className={`text-xs font-semibold px-2.5 py-1 rounded-full inline-block mt-2 ${ROLE_CLS[role] || 'bg-gray-100 text-gray-500 border border-gray-200'}`}>{ROLE_LABEL[role]}</span>
+            {profil?.photo && (
+              <button onClick={supprimerPhoto} className="block mt-2 text-xs text-red-500 hover:text-red-700 font-semibold transition-colors" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+                Supprimer la photo
+              </button>
+            )}
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-5">
           {/* Informations */}
-          <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
+          <div className="bg-white rounded-2xl p-6" style={{ border: '1px solid rgba(99,102,241,0.12)', boxShadow: '0 2px 12px rgba(99,102,241,0.06)' }}>
             <p className="text-sm font-bold text-gray-900 mb-5">Informations personnelles</p>
             <div className="flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-3">
@@ -171,12 +158,12 @@ export default function Profil() {
                   </div>
                 )}
               </div>
-              <button onClick={sauvegarder} className="w-full py-2.5 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition-colors">Sauvegarder</button>
+              <button onClick={sauvegarder} className="btn-gradient w-full py-2.5 text-sm font-bold rounded-xl" style={{ color: '#fff', border: 'none', cursor: 'pointer', borderRadius: 12, fontFamily: 'inherit' }}>Sauvegarder</button>
             </div>
           </div>
 
           {/* Mot de passe */}
-          <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
+          <div className="bg-white rounded-2xl p-6" style={{ border: '1px solid rgba(99,102,241,0.12)', boxShadow: '0 2px 12px rgba(99,102,241,0.06)' }}>
             <p className="text-sm font-bold text-gray-900 mb-5">Changer le mot de passe</p>
             <div className="flex flex-col gap-4">
               {[{ label: 'Mot de passe actuel', key: 'ancien_mot_de_passe' }, { label: 'Nouveau mot de passe', key: 'nouveau_mot_de_passe' }, { label: 'Confirmer', key: 'confirmer' }].map(({ label, key }) => (

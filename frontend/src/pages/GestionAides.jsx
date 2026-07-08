@@ -25,9 +25,8 @@ const STATUT_COLORS = {
   suspendue: { bg: '#fef2f2', color: '#dc2626' },
 }
 
-const FORM_INIT = { titre: '', description: '', type_aide: 'subvention', montant_min: '', montant_max: '', organisme_financeur: '', statut: 'active', beneficiaires: '', date_ouverture: '', date_fermeture: '', documents_requis: '', criteres_eligibilite: '', lien_externe: '', secteur: '', territoire: 'national' }
+const FORM_INIT = { titre: '', description: '', type_aide: 'subvention', montant_min: '', montant_max: '', organisme_financeur: '', statut: 'active', beneficiaires: '', date_ouverture: '', date_fermeture: '', documents_requis: '', criteres_eligibilite: '', secteur: '', territoire: 'national' }
 
-// ✅ NOUVEAU : Style commun pour les messages d'erreur sous les champs
 const errorStyle = {
   color: '#dc2626',
   fontSize: 12,
@@ -38,7 +37,6 @@ const errorStyle = {
   gap: 4
 }
 
-// ✅ NOUVEAU : Style pour mettre une bordure rouge sur les champs en erreur
 const errorInputStyle = {
   borderColor: '#dc2626',
   background: '#fef2f2'
@@ -54,7 +52,7 @@ function GestionAides() {
   const [iaEnCours, setIaEnCours] = useState(false)
   const [form, setForm] = useState(FORM_INIT)
   const [notification, setNotification] = useState(null)
-  const [erreurs, setErreurs] = useState({}) // ✅ NOUVEAU : objet contenant les erreurs par champ
+  const [erreurs, setErreurs] = useState({})
 
   const token = localStorage.getItem('token')
   const payload = token ? JSON.parse(atob(token.split('.')[1])) : null
@@ -71,9 +69,9 @@ function GestionAides() {
   }
 
   const ouvrirFormulaire = (aide = null) => {
-    setErreurs({}) // ✅ Réinitialiser les erreurs à chaque ouverture
+    setErreurs({})
     if (aide) {
-      setForm({ titre: aide.titre || '', description: aide.description || '', type_aide: aide.type_aide || 'subvention', montant_min: aide.montant_min || '', montant_max: aide.montant_max || '', organisme_financeur: aide.organisme_financeur || '', statut: aide.statut || 'active', beneficiaires: aide.beneficiaires || '', date_ouverture: aide.date_ouverture || '', date_fermeture: aide.date_fermeture || '', documents_requis: aide.documents_requis || '', criteres_eligibilite: aide.criteres_eligibilite || '', lien_externe: aide.lien_externe || '', secteur: aide.secteur || '', territoire: aide.territoire || 'national' })
+      setForm({ titre: aide.titre || '', description: aide.description || '', type_aide: aide.type_aide || 'subvention', montant_min: aide.montant_min || '', montant_max: aide.montant_max || '', organisme_financeur: aide.organisme_financeur || '', statut: aide.statut || 'active', beneficiaires: aide.beneficiaires || '', date_ouverture: aide.date_ouverture || '', date_fermeture: aide.date_fermeture || '', documents_requis: aide.documents_requis || '', criteres_eligibilite: aide.criteres_eligibilite || '', secteur: aide.secteur || '', territoire: aide.territoire || 'national' })
       setAideEnEdition(aide)
     } else {
       setForm(FORM_INIT)
@@ -82,7 +80,6 @@ function GestionAides() {
     setShowForm(true)
   }
 
-  // ✅ NOUVEAU : Helper pour mettre à jour un champ ET effacer son erreur
   const updateField = (champ, valeur) => {
     setForm({ ...form, [champ]: valeur })
     if (erreurs[champ]) {
@@ -92,11 +89,9 @@ function GestionAides() {
     }
   }
 
-  // ✅ NOUVEAU : Fonction de validation centralisée
   const validerFormulaire = () => {
     const nouvellesErreurs = {}
 
-    // Champs obligatoires
     if (!form.titre.trim()) {
       nouvellesErreurs.titre = 'Le titre est obligatoire'
     } else if (form.titre.trim().length < 5) {
@@ -113,7 +108,6 @@ function GestionAides() {
       nouvellesErreurs.organisme_financeur = "L'organisme financeur est obligatoire"
     }
 
-    // Validation des montants
     if (form.montant_min && (isNaN(form.montant_min) || parseFloat(form.montant_min) < 0)) {
       nouvellesErreurs.montant_min = 'Le montant minimum doit être un nombre positif'
     }
@@ -125,19 +119,9 @@ function GestionAides() {
       nouvellesErreurs.montant_max = 'Le montant maximum doit être supérieur au minimum'
     }
 
-    // Validation des dates
     if (form.date_ouverture && form.date_fermeture &&
         new Date(form.date_fermeture) <= new Date(form.date_ouverture)) {
-      nouvellesErreurs.date_fermeture = 'La date de fermeture doit être après la date d\'ouverture'
-    }
-
-    // Validation du lien externe (s'il est rempli)
-    if (form.lien_externe && form.lien_externe.trim()) {
-      try {
-        new URL(form.lien_externe)
-      } catch {
-        nouvellesErreurs.lien_externe = 'Le lien doit être une URL valide (https://...)'
-      }
+      nouvellesErreurs.date_fermeture = "La date de fermeture doit être après la date d'ouverture"
     }
 
     setErreurs(nouvellesErreurs)
@@ -145,7 +129,6 @@ function GestionAides() {
   }
 
   const sauvegarder = async () => {
-    // ✅ MODIFIÉ : utilisation de la validation centralisée
     if (!validerFormulaire()) {
       afficherNotification('error', 'Veuillez corriger les erreurs dans le formulaire')
       return
@@ -230,7 +213,6 @@ function GestionAides() {
         criteres_eligibilite: res.data.criteres_eligibilite || form.criteres_eligibilite,
         documents_requis: res.data.documents_requis || form.documents_requis,
       })
-      // ✅ Effacer les erreurs sur les champs qui viennent d'être remplis par l'IA
       const nouvellesErreurs = { ...erreurs }
       delete nouvellesErreurs.description
       delete nouvellesErreurs.criteres_eligibilite
@@ -369,7 +351,6 @@ function GestionAides() {
           <div className="modal">
             <h2 className="modal-title">{aideEnEdition ? '✎ Modifier une aide' : '+ Nouvelle aide'}</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {/* ✅ MODIFIÉ : Champ Titre avec validation visuelle */}
               <div className="form-group">
                 <label className="form-label">Titre <span style={{ color: '#dc2626' }}>*</span></label>
                 <input
@@ -404,7 +385,6 @@ function GestionAides() {
                 </p>
               )}
 
-              {/* ✅ MODIFIÉ : Description avec validation */}
               <div className="form-group">
                 <label className="form-label">Description <span style={{ color: '#dc2626' }}>*</span></label>
                 <textarea
@@ -430,7 +410,6 @@ function GestionAides() {
                 </div>
               </div>
 
-              {/* ✅ MODIFIÉ : Montants avec validation */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div className="form-group">
                   <label className="form-label">Montant min (€)</label>
@@ -458,7 +437,6 @@ function GestionAides() {
                 </div>
               </div>
 
-              {/* ✅ MODIFIÉ : Organisme financeur avec validation */}
               <div className="form-group">
                 <label className="form-label">Organisme financeur <span style={{ color: '#dc2626' }}>*</span></label>
                 <input
@@ -471,7 +449,6 @@ function GestionAides() {
                 {erreurs.organisme_financeur && <div style={errorStyle}>⚠ {erreurs.organisme_financeur}</div>}
               </div>
 
-              {/* ✅ MODIFIÉ : Dates avec validation */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div className="form-group">
                   <label className="form-label">Date ouverture</label>
@@ -507,29 +484,19 @@ function GestionAides() {
                   </select>
                 </div>
               </div>
+
               <div className="form-group"><label className="form-label">Secteur</label>
                 <select className="form-input" value={form.secteur} onChange={e => setForm({ ...form, secteur: e.target.value })}>
                   <option value="">Tous secteurs</option><option value="agriculture">Agriculture</option><option value="industrie">Industrie</option><option value="commerce">Commerce</option><option value="sante">Santé</option><option value="education">Éducation</option><option value="numerique">Numérique</option><option value="batiment">Bâtiment</option><option value="autre">Autre</option>
                 </select>
               </div>
+
               <div className="form-group"><label className="form-label">Documents requis</label><textarea className="form-input form-textarea" rows={2} placeholder="Ex: RIB, Kbis..." value={form.documents_requis} onChange={e => setForm({ ...form, documents_requis: e.target.value })} /></div>
               <div className="form-group"><label className="form-label">Critères d'éligibilité</label><textarea className="form-input form-textarea" rows={2} placeholder="Ex: PME de moins de 50 salariés..." value={form.criteres_eligibilite} onChange={e => setForm({ ...form, criteres_eligibilite: e.target.value })} /></div>
 
-              {/* ✅ MODIFIÉ : Lien externe avec validation */}
-              <div className="form-group">
-                <label className="form-label">Lien externe</label>
-                <input
-                  className="form-input"
-                  placeholder="https://..."
-                  value={form.lien_externe}
-                  onChange={e => updateField('lien_externe', e.target.value)}
-                  style={erreurs.lien_externe ? errorInputStyle : {}}
-                />
-                {erreurs.lien_externe && <div style={errorStyle}>⚠ {erreurs.lien_externe}</div>}
-              </div>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={sauvegarder}>{aideEnEdition ? 'Enregistrer' : 'Créer l\'aide'}</button>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={sauvegarder}>{aideEnEdition ? 'Enregistrer' : "Créer l'aide"}</button>
               <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setShowForm(false); setErreurs({}); }}>Annuler</button>
             </div>
           </div>

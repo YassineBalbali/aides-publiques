@@ -1,13 +1,12 @@
-from app.celery_app import celery_app
 from app.core.database import SessionLocal
 from app.models.aide import Aide
 import csv
 import io
 
-@celery_app.task(name="import_aides_csv", bind=True)
-def import_aides_csv(self, contenu_csv: str):
+
+def import_aides_csv(contenu_csv: str):
     """
-    Importe des aides depuis un CSV en tâche de fond.
+    Importe des aides depuis un CSV de manière synchrone.
     """
     db = SessionLocal()
     succes = 0

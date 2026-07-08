@@ -29,131 +29,140 @@ export default function Register() {
         mot_de_passe: data.mot_de_passe, type_beneficiaire: data.type_beneficiaire
       })
       navigate('/login')
-    } catch (err) { setErreur(err.response?.data?.detail || "Une erreur est survenue.") }
+    } catch (err) { setErreur(err.response?.data?.detail || 'Une erreur est survenue.') }
   }
 
-  const inp = (err) => `w-full px-4 py-3 rounded-xl text-sm border ${err ? 'border-red-300 bg-red-50 text-red-800' : 'border-gray-200 bg-gray-50 text-gray-800'} outline-none focus:border-blue-500 focus:bg-white transition-colors`
+  const inputStyle = (hasError) => ({
+    width: '100%', padding: '11px 14px', borderRadius: 10, fontSize: 14,
+    background: hasError ? 'rgba(220,38,38,0.15)' : 'rgba(255,255,255,0.08)',
+    border: hasError ? '1px solid rgba(220,38,38,0.5)' : '1px solid rgba(255,255,255,0.14)',
+    outline: 'none', color: '#fff', fontFamily: 'inherit',
+    transition: 'all 0.2s', boxSizing: 'border-box',
+  })
+
+  const onFocusInput = (e) => {
+    e.target.style.borderColor = 'rgba(99,102,241,0.7)'
+    e.target.style.background = 'rgba(255,255,255,0.12)'
+    e.target.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.15)'
+  }
+  const onBlurInput = (e, hasError) => {
+    e.target.style.borderColor = hasError ? 'rgba(220,38,38,0.5)' : 'rgba(255,255,255,0.14)'
+    e.target.style.background = hasError ? 'rgba(220,38,38,0.15)' : 'rgba(255,255,255,0.08)'
+    e.target.style.boxShadow = 'none'
+  }
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
-      {/* Panneau gauche */}
-      <div className="w-5/12 bg-blue-900 flex flex-col justify-between p-12 relative overflow-hidden flex-shrink-0">
-        <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-white/5" />
-        <div className="absolute -bottom-16 -left-16 w-52 h-52 rounded-full bg-white/5" />
+    <div className="bg-hero-mesh" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', position: 'relative', overflow: 'hidden' }}>
 
-        <Link to="/" className="flex items-center gap-3 no-underline relative z-10">
-          <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-sm">AP</span>
-          </div>
-          <span className="text-white font-bold text-base">Aides Publiques</span>
-        </Link>
+      {/* Animated blobs */}
+      <div className="anim-blob" style={{ position: 'absolute', top: '10%', right: '6%', width: 420, height: 420, background: 'radial-gradient(circle, rgba(99,102,241,0.22) 0%, transparent 70%)', filter: 'blur(50px)', pointerEvents: 'none', animationDuration: '14s' }} />
+      <div className="anim-blob" style={{ position: 'absolute', bottom: '8%', left: '5%', width: 360, height: 360, background: 'radial-gradient(circle, rgba(139,92,246,0.2) 0%, transparent 70%)', filter: 'blur(45px)', pointerEvents: 'none', animationDuration: '19s', animationDelay: '-6s' }} />
 
-        <div className="relative z-10">
-          <h2 className="text-white text-3xl font-extrabold leading-tight mb-4 tracking-tight">
-            Rejoignez la plateforme
-          </h2>
-          <p className="text-blue-200 text-sm leading-relaxed mb-8">
-            Créez votre compte gratuitement et accédez à plus de 127 aides publiques disponibles.
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            {[{ n: '127', l: 'Aides' }, { n: '3 240', l: 'Bénéficiaires' }, { n: '8 500+', l: 'Dossiers' }, { n: '45', l: 'Partenaires' }].map((s, i) => (
-              <div key={i} className="bg-white/10 border border-white/10 rounded-xl p-3.5">
-                <div className="text-white font-extrabold text-xl tracking-tight">{s.n}</div>
-                <div className="text-blue-200 text-xs mt-1">{s.l}</div>
-              </div>
-            ))}
-          </div>
+      {/* Grid overlay */}
+      <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '60px 60px', pointerEvents: 'none' }} />
+
+      {/* Logo */}
+      <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', marginBottom: 28, position: 'relative', zIndex: 1 }}>
+        <div style={{ width: 38, height: 38, borderRadius: 11, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 20px rgba(99,102,241,0.5)', flexShrink: 0 }}>
+          <span style={{ color: '#fff', fontWeight: 800, fontSize: 14 }}>AP</span>
+        </div>
+        <span style={{ color: '#fff', fontWeight: 700, fontSize: 16, letterSpacing: '-0.01em' }}>Aides Publiques</span>
+      </Link>
+
+      {/* Glass card */}
+      <div className="anim-fadeInUp" style={{ width: '100%', maxWidth: 480, padding: '32px 36px', borderRadius: 20, background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.14)', boxShadow: '0 24px 64px rgba(0,0,0,0.3)', position: 'relative', zIndex: 1 }}>
+
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em', marginBottom: 5 }}>Créer un compte</h1>
+          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)' }}>Inscrivez-vous pour déposer vos demandes</p>
         </div>
 
-        <p className="text-blue-400 text-xs relative z-10">© 2026 Plateforme Aides Publiques</p>
-      </div>
+        {erreur && (
+          <div style={{ background: 'rgba(220,38,38,0.18)', border: '1px solid rgba(220,38,38,0.4)', borderRadius: 10, padding: '11px 14px', marginBottom: 18, fontSize: 13, color: '#fca5a5', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>⚠️</span> {erreur}
+          </div>
+        )}
 
-      {/* Panneau droit */}
-      <div className="flex-1 flex items-center justify-center px-8 py-12 overflow-y-auto">
-        <div className="w-full max-w-md">
-          <div className="mb-7">
-            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight mb-1.5">Créer un compte</h1>
-            <p className="text-sm text-gray-400">Inscrivez-vous pour déposer vos demandes</p>
+        <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: 16 }} noValidate>
+
+          {/* Nom / Prénom */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.65)', marginBottom: 7 }}>Nom</label>
+              <input type="text" placeholder="Dupont" {...register('nom', { required: 'Obligatoire' })}
+                className="input-dark" style={inputStyle(!!errors.nom)}
+                onFocus={onFocusInput} onBlur={e => onBlurInput(e, !!errors.nom)} />
+              {errors.nom && <p style={{ color: '#fca5a5', fontSize: 11, marginTop: 4 }}>{errors.nom.message}</p>}
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.65)', marginBottom: 7 }}>Prénom</label>
+              <input type="text" placeholder="Jean" {...register('prenom', { required: 'Obligatoire' })}
+                className="input-dark" style={inputStyle(!!errors.prenom)}
+                onFocus={onFocusInput} onBlur={e => onBlurInput(e, !!errors.prenom)} />
+              {errors.prenom && <p style={{ color: '#fca5a5', fontSize: 11, marginTop: 4 }}>{errors.prenom.message}</p>}
+            </div>
           </div>
 
-          {erreur && (
-            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-5 text-sm text-red-600 font-medium">
-              {erreur}
-            </div>
-          )}
+          {/* Email */}
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.65)', marginBottom: 7 }}>Adresse email</label>
+            <input type="email" placeholder="votre@email.fr"
+              {...register('email', { required: 'Obligatoire', pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Format invalide' } })}
+              className="input-dark" style={inputStyle(!!errors.email)}
+              onFocus={onFocusInput} onBlur={e => onBlurInput(e, !!errors.email)} />
+            {errors.email && <p style={{ color: '#fca5a5', fontSize: 11, marginTop: 4 }}>{errors.email.message}</p>}
+          </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
-            {/* Nom / Prénom */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Nom</label>
-                <input type="text" placeholder="Dupont" {...register('nom', { required: 'Obligatoire' })} className={inp(!!errors.nom)} />
-                {errors.nom && <p className="text-red-500 text-xs mt-1">{errors.nom.message}</p>}
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Prénom</label>
-                <input type="text" placeholder="Jean" {...register('prenom', { required: 'Obligatoire' })} className={inp(!!errors.prenom)} />
-                {errors.prenom && <p className="text-red-500 text-xs mt-1">{errors.prenom.message}</p>}
-              </div>
-            </div>
-
-            {/* Email */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Adresse email</label>
-              <input type="email" placeholder="votre@email.fr"
-                {...register('email', { required: 'Obligatoire', pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Format invalide' } })}
-                className={inp(!!errors.email)} />
-              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
-            </div>
-
-            {/* Type bénéficiaire */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-2">Type de bénéficiaire</label>
-              <input type="hidden" {...register('type_beneficiaire', { required: 'Veuillez choisir un type' })} />
-              <div className="grid grid-cols-3 gap-2.5">
-                {TYPES.map(({ value, label, desc, icon }) => (
+          {/* Type bénéficiaire */}
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.65)', marginBottom: 10 }}>Type de bénéficiaire</label>
+            <input type="hidden" {...register('type_beneficiaire', { required: 'Veuillez choisir un type' })} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
+              {TYPES.map(({ value, label, desc, icon }) => {
+                const isSelected = selectedType === value
+                return (
                   <button key={value} type="button" onClick={() => handleTypeSelect(value)}
-                    className={`p-3.5 rounded-xl border-2 text-center transition-all cursor-pointer ${
-                      selectedType === value
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 bg-gray-50 hover:border-gray-300 hover:bg-white'
-                    }`}>
-                    <div className="text-lg mb-1">{icon}</div>
-                    <div className={`text-xs font-bold ${selectedType === value ? 'text-blue-700' : 'text-gray-700'}`}>{label}</div>
-                    <div className="text-xs text-gray-400 mt-0.5">{desc}</div>
+                    style={{ padding: '12px 8px', borderRadius: 12, textAlign: 'center', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s', background: isSelected ? 'rgba(99,102,241,0.25)' : 'rgba(255,255,255,0.05)', border: isSelected ? '1px solid rgba(99,102,241,0.5)' : '1px solid rgba(255,255,255,0.1)', boxShadow: isSelected ? '0 0 0 1px rgba(99,102,241,0.3)' : 'none' }}>
+                    <div style={{ fontSize: 20, marginBottom: 5 }}>{icon}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: isSelected ? '#a5b4fc' : 'rgba(255,255,255,0.7)' }}>{label}</div>
+                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{desc}</div>
                   </button>
-                ))}
-              </div>
-              {errors.type_beneficiaire && <p className="text-red-500 text-xs mt-1">{errors.type_beneficiaire.message}</p>}
+                )
+              })}
             </div>
+            {errors.type_beneficiaire && <p style={{ color: '#fca5a5', fontSize: 11, marginTop: 5 }}>{errors.type_beneficiaire.message}</p>}
+          </div>
 
-            {/* Mot de passe */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Mot de passe</label>
-              <div className="relative">
-                <input type={showPassword ? 'text' : 'password'} placeholder="Minimum 8 caractères"
-                  {...register('mot_de_passe', { required: 'Obligatoire', minLength: { value: 8, message: 'Min 8 caractères' } })}
-                  className={`${inp(!!errors.mot_de_passe)} pr-11`} />
-                <button type="button" onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors text-base cursor-pointer">
-                  {showPassword ? '🙈' : '👁️'}
-                </button>
-              </div>
-              {errors.mot_de_passe && <p className="text-red-500 text-xs mt-1">{errors.mot_de_passe.message}</p>}
+          {/* Mot de passe */}
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.65)', marginBottom: 7 }}>Mot de passe</label>
+            <div style={{ position: 'relative' }}>
+              <input type={showPassword ? 'text' : 'password'} placeholder="Minimum 8 caractères"
+                {...register('mot_de_passe', { required: 'Obligatoire', minLength: { value: 8, message: 'Min 8 caractères' } })}
+                className="input-dark" style={{ ...inputStyle(!!errors.mot_de_passe), paddingRight: 46 }}
+                onFocus={onFocusInput} onBlur={e => onBlurInput(e, !!errors.mot_de_passe)} />
+              <button type="button" onClick={() => setShowPassword(!showPassword)}
+                style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.45)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: 0, transition: 'color 0.2s' }}
+                onMouseEnter={e => e.currentTarget.style.color = 'rgba(255,255,255,0.8)'}
+                onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.45)'}>
+                {showPassword ? '🙈' : '👁️'}
+              </button>
             </div>
+            {errors.mot_de_passe && <p style={{ color: '#fca5a5', fontSize: 11, marginTop: 4 }}>{errors.mot_de_passe.message}</p>}
+          </div>
 
-            <button type="submit" disabled={isSubmitting}
-              className="w-full py-3 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors mt-1">
-              {isSubmitting ? 'Création...' : 'Créer mon compte'}
-            </button>
-          </form>
-
-          <p className="mt-5 text-center text-sm text-gray-500">
-            Déjà un compte ?{' '}
-            <Link to="/login" className="text-blue-600 font-semibold no-underline hover:underline">Se connecter</Link>
-          </p>
-        </div>
+          <button type="submit" disabled={isSubmitting} className="btn-gradient"
+            style={{ width: '100%', padding: '13px', borderRadius: 10, fontSize: 14, fontFamily: 'inherit', color: '#fff', border: 'none', cursor: 'pointer', marginTop: 4 }}>
+            {isSubmitting ? 'Création...' : 'Créer mon compte →'}
+          </button>
+        </form>
       </div>
+
+      <p style={{ marginTop: 24, fontSize: 13, color: 'rgba(255,255,255,0.38)', position: 'relative', zIndex: 1 }}>
+        Déjà un compte ?{' '}
+        <Link to="/login" style={{ color: '#818cf8', fontWeight: 600, textDecoration: 'none' }}>Se connecter</Link>
+      </p>
+      <p style={{ marginTop: 10, fontSize: 11, color: 'rgba(255,255,255,0.18)', position: 'relative', zIndex: 1 }}>© 2026 Plateforme Aides Publiques</p>
     </div>
   )
 }

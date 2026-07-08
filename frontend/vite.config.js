@@ -1,14 +1,3 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
-
-export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-  ],
-  server: {
-    host: '0.0.0.0',
-    port: 5173
-  }
-})
+// Ce fichier est remplacé par vite.config.ts (TypeScript)
+// Vite charge automatiquement vite.config.ts en priorité.
+export { default } from './vite.config.ts'

@@ -2,25 +2,39 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { SidebarLayout, IconFolder, IconChart } from './SidebarLayout'
 import api from '../api'
+import {
+  Chart as ChartJS,
+  ArcElement, Tooltip, Legend,
+  CategoryScale, LinearScale, BarElement, Title,
+} from 'chart.js'
+import { Doughnut, Bar } from 'react-chartjs-2'
+
+ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title)
 
 const INSTRUCTEUR_NAV = [
   { to: '/instructeur', label: 'Mes dossiers', Icon: IconFolder },
   { to: '/instructeur/dashboard', label: 'Dashboard', Icon: IconChart },
 ]
 
-function BarH({ label, value, max, color }) {
-  const pct = max > 0 ? Math.round((value / max) * 100) : 0
+function KpiCard({ label, value, sub, color, bg }) {
   return (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: 12 }}>
-        <span style={{ color: '#64748b' }}>{label}</span>
-        <span style={{ color: '#0f172a', fontWeight: 700 }}>{value} <span style={{ color: '#94a3b8', fontWeight: 400 }}>({pct}%)</span></span>
-      </div>
-      <div style={{ background: '#f1f5f9', borderRadius: 100, height: 6 }}>
-        <div style={{ width: `${pct}%`, height: 6, borderRadius: 100, background: color, transition: 'width 0.5s ease' }} />
-      </div>
+    <div className="kpi-card" style={{ borderTop: `3px solid ${color}` }}>
+      <div className="kpi-label">{label}</div>
+      <div className="kpi-value" style={{ color }}>{value}</div>
+      <div className="kpi-sub">{sub}</div>
     </div>
   )
+}
+
+function getLast6Months() {
+  const months = []
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(1)
+    d.setMonth(d.getMonth() - i)
+    months.push({ label: d.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' }), year: d.getFullYear(), month: d.getMonth() })
+  }
+  return months
 }
 
 function DashboardInstructeur() {
@@ -38,12 +52,166 @@ function DashboardInstructeur() {
       .catch(() => setChargement(false))
   }, [])
 
-  const enAttente = dossiers.filter(d => d.statut === 'depose' || d.statut === 'brouillon')
-  const enInstruction = dossiers.filter(d => d.statut === 'en_instruction')
-  const traites = dossiers.filter(d => d.statut === 'accepte' || d.statut === 'refuse')
-  const prioritaires = [...enAttente].sort((a, b) => new Date(a.cree_le) - new Date(b.cree_le)).slice(0, 5)
-  const tauxTraitement = dossiers.length ? Math.round(traites.length / dossiers.length * 100) : 0
-  const joursAttente = (date) => Math.floor((new Date() - new Date(date)) / (1000 * 60 * 60 * 24))
+  const acceptes    = dossiers.filter(d => d.statut === 'accepte').length
+  const refuses     = dossiers.filter(d => d.statut === 'refuse').length
+  const enInstr     = dossiers.filter(d => d.statut === 'en_instruction').length
+  const enAttente   = dossiers.filter(d => d.statut === 'depose' || d.statut === 'brouillon')
+  const traites     = acceptes + refuses
+  const tauxTraitement = dossiers.length ? Math.round(traites / dossiers.length * 100) : 0
+  const joursAttente = (date) => Math.floor((new Date() - new Date(date)) / 86400000)
+  const months = getLast6Months()
+
+  // --- Chart 3 : Décisions par mois (empilé acceptés / refusés) ---
+  const decisionsData = {
+    labels: months.map(m => m.label),
+    datasets: [
+      {
+        label: 'Acceptés',
+        data: months.map(m => dossiers.filter(d => {
+          const dt = new Date(d.cree_le)
+          return d.statut === 'accepte' && dt.getFullYear() === m.year && dt.getMonth() === m.month
+        }).length),
+        backgroundColor: 'rgba(16,185,129,0.82)',
+        borderRadius: 6,
+        barPercentage: 0.6,
+      },
+      {
+        label: 'Refusés',
+        data: months.map(m => dossiers.filter(d => {
+          const dt = new Date(d.cree_le)
+          return d.statut === 'refuse' && dt.getFullYear() === m.year && dt.getMonth() === m.month
+        }).length),
+        backgroundColor: 'rgba(239,68,68,0.78)',
+        borderRadius: 6,
+        barPercentage: 0.6,
+      },
+      {
+        label: 'Compléments',
+        data: months.map(m => dossiers.filter(d => {
+          const dt = new Date(d.cree_le)
+          return d.statut === 'complement_demande' && dt.getFullYear() === m.year && dt.getMonth() === m.month
+        }).length),
+        backgroundColor: 'rgba(245,158,11,0.78)',
+        borderRadius: 6,
+        barPercentage: 0.6,
+      },
+    ],
+  }
+  const decisionsOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'top', labels: { padding: 14, font: { size: 12, family: 'Inter' }, usePointStyle: true } },
+    },
+    scales: {
+      x: { stacked: true, grid: { display: false }, ticks: { font: { size: 12, family: 'Inter' } } },
+      y: { stacked: true, beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1, font: { size: 12, family: 'Inter' } } },
+    },
+  }
+
+  // --- Chart 4 : Taux d'acceptation par aide ---
+  const aidesMap = {}
+  dossiers.forEach(d => {
+    const t = d.aide?.titre || 'Non spécifiée'
+    if (!aidesMap[t]) aidesMap[t] = { acc: 0, ref: 0 }
+    if (d.statut === 'accepte') aidesMap[t].acc++
+    if (d.statut === 'refuse')  aidesMap[t].ref++
+  })
+  const aidesEntries = Object.entries(aidesMap)
+    .filter(([, v]) => v.acc + v.ref > 0)
+    .sort((a, b) => (b[1].acc + b[1].ref) - (a[1].acc + a[1].ref))
+    .slice(0, 6)
+  const tauxAideData = {
+    labels: aidesEntries.map(([t]) => t.length > 28 ? t.slice(0, 25) + '…' : t),
+    datasets: [
+      {
+        label: 'Acceptés',
+        data: aidesEntries.map(([, v]) => v.acc),
+        backgroundColor: 'rgba(16,185,129,0.82)',
+        borderRadius: 6,
+        barPercentage: 0.6,
+      },
+      {
+        label: 'Refusés',
+        data: aidesEntries.map(([, v]) => v.ref),
+        backgroundColor: 'rgba(239,68,68,0.78)',
+        borderRadius: 6,
+        barPercentage: 0.6,
+      },
+    ],
+  }
+  const tauxAideOptions = {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'top', labels: { padding: 14, font: { size: 12, family: 'Inter' }, usePointStyle: true } },
+    },
+    scales: {
+      x: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1, font: { size: 12, family: 'Inter' } } },
+      y: { grid: { display: false }, ticks: { font: { size: 11, family: 'Inter' } } },
+    },
+  }
+
+  // --- Donut data ---
+  const donutData = {
+    labels: ['Acceptés', 'Refusés', 'En instruction', 'En attente'],
+    datasets: [{
+      data: [acceptes, refuses, enInstr, enAttente.length],
+      backgroundColor: ['#10b981', '#ef4444', '#f59e0b', '#6366f1'],
+      borderColor: ['#fff', '#fff', '#fff', '#fff'],
+      borderWidth: 3,
+      hoverOffset: 6,
+    }],
+  }
+  const donutOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '68%',
+    plugins: {
+      legend: { position: 'bottom', labels: { padding: 14, font: { size: 12, family: 'Inter' }, usePointStyle: true } },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.label} : ${ctx.parsed} dossier${ctx.parsed > 1 ? 's' : ''}` } },
+    },
+  }
+
+  // --- Bar data (évolution 6 derniers mois) ---
+  const barData = {
+    labels: months.map(m => m.label),
+    datasets: [
+      {
+        label: 'Déposés',
+        data: months.map(m => dossiers.filter(d => {
+          const dt = new Date(d.cree_le)
+          return dt.getFullYear() === m.year && dt.getMonth() === m.month
+        }).length),
+        backgroundColor: 'rgba(99,102,241,0.75)',
+        borderRadius: 7,
+        barPercentage: 0.55,
+      },
+      {
+        label: 'Acceptés',
+        data: months.map(m => dossiers.filter(d => {
+          const dt = new Date(d.cree_le)
+          return d.statut === 'accepte' && dt.getFullYear() === m.year && dt.getMonth() === m.month
+        }).length),
+        backgroundColor: 'rgba(16,185,129,0.75)',
+        borderRadius: 7,
+        barPercentage: 0.55,
+      },
+    ],
+  }
+  const barOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'top', labels: { padding: 14, font: { size: 12, family: 'Inter' }, usePointStyle: true } },
+      title: { display: false },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 12, family: 'Inter' } } },
+      y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1, font: { size: 12, family: 'Inter' } } },
+    },
+  }
 
   if (chargement) return (
     <SidebarLayout navItems={INSTRUCTEUR_NAV} role="instructeur" prenom={payload?.prenom || ''} nom={payload?.nom || ''}>
@@ -58,94 +226,72 @@ function DashboardInstructeur() {
         <p className="page-subtitle">Suivi et traitement de vos dossiers</p>
       </div>
 
+      {/* KPI cards */}
       <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
-        {[
-          { label: 'En attente', value: enAttente.length, sub: 'À traiter', color: '#2563eb' },
-          { label: 'En instruction', value: enInstruction.length, sub: 'En cours', color: '#d97706' },
-          { label: 'Traités', value: traites.length, sub: `${dossiers.filter(d => d.statut === 'accepte').length} acc. · ${dossiers.filter(d => d.statut === 'refuse').length} ref.`, color: '#059669' },
-          { label: 'Taux traitement', value: `${tauxTraitement}%`, sub: `Sur ${dossiers.length} dossiers`, color: '#7c3aed' },
-        ].map((kpi, i) => (
-          <div className="kpi-card" key={i}>
-            <div className="kpi-label">{kpi.label}</div>
-            <div className="kpi-value" style={{ color: kpi.color }}>{kpi.value}</div>
-            <div className="kpi-sub">{kpi.sub}</div>
-          </div>
-        ))}
+        <KpiCard label="En attente" value={enAttente.length} sub="À traiter" color="#6366f1" />
+        <KpiCard label="En instruction" value={enInstr} sub="En cours" color="#f59e0b" />
+        <KpiCard label="Traités" value={traites} sub={`${acceptes} acc. · ${refuses} ref.`} color="#10b981" />
+        <KpiCard label="Taux traitement" value={`${tauxTraitement}%`} sub={`Sur ${dossiers.length} dossiers`} color="#7c3aed" />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14, width: '100%' }}>
-        {/* Prioritaires */}
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title">Dossiers prioritaires</span>
-            <span style={{ fontSize: 11, color: '#94a3b8' }}>Les plus anciens</span>
+      {/* Charts row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 14, marginBottom: 14 }}>
+
+        {/* Donut — répartition statuts */}
+        <div className="card" style={{ padding: 22 }}>
+          <div className="card-title" style={{ marginBottom: 4 }}>Répartition des statuts</div>
+          <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 16 }}>{dossiers.length} dossiers au total</p>
+          <div style={{ height: 240 }}>
+            {dossiers.length === 0
+              ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#cbd5e1', fontSize: 13 }}>Aucune donnée</div>
+              : <Doughnut data={donutData} options={donutOptions} />
+            }
           </div>
-          {prioritaires.length === 0 ? (
-            <div className="empty-state"><div className="empty-state-icon">✅</div>Aucun dossier en attente</div>
-          ) : prioritaires.map((d, i) => {
-            const jours = joursAttente(d.cree_le)
-            const joursColor = jours > 10 ? '#dc2626' : jours > 5 ? '#d97706' : '#059669'
-            const joursBg = jours > 10 ? '#fef2f2' : jours > 5 ? '#fffbeb' : '#ecfdf5'
-            return (
-              <div key={d.id} style={{ padding: '12px 16px', borderBottom: i < prioritaires.length - 1 ? '1px solid #f8fafc' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#2563eb' }}>{d.numero}</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{d.demandeur?.prenom} {d.demandeur?.nom}</div>
-                </div>
-                <span className="badge" style={{ background: joursBg, color: joursColor }}>{jours}j</span>
-              </div>
-            )
-          })}
+          {/* Centre label */}
+          {dossiers.length > 0 && (
+            <div style={{ textAlign: 'center', marginTop: 6 }}>
+              <span style={{ fontSize: 11, color: '#94a3b8' }}>Taux de traitement : </span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#7c3aed' }}>{tauxTraitement}%</span>
+            </div>
+          )}
         </div>
 
-        {/* Statistiques */}
-        <div className="card" style={{ padding: 20 }}>
-          <div className="card-title" style={{ marginBottom: 16 }}>Statistiques</div>
-          {[
-            { label: 'Acceptés', value: dossiers.filter(d => d.statut === 'accepte').length, color: '#10b981' },
-            { label: 'Refusés', value: dossiers.filter(d => d.statut === 'refuse').length, color: '#ef4444' },
-            { label: 'En instruction', value: enInstruction.length, color: '#f59e0b' },
-            { label: 'En attente', value: enAttente.length, color: '#3b82f6' },
-          ].map((s, i) => <BarH key={i} {...s} max={Math.max(dossiers.length, 1)} />)}
+        {/* Bar — évolution mensuelle */}
+        <div className="card" style={{ padding: 22 }}>
+          <div className="card-title" style={{ marginBottom: 4 }}>Évolution mensuelle</div>
+          <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 16 }}>6 derniers mois</p>
+          <div style={{ height: 240 }}>
+            <Bar data={barData} options={barOptions} />
+          </div>
         </div>
       </div>
 
-      {/* Tableau en attente */}
-      <div className="card">
-        <div className="card-header">
-          <span className="card-title">Tous les dossiers en attente</span>
-          <span className="count-badge">{enAttente.length}</span>
+      {/* Décisions par mois + taux par aide */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+
+        {/* Décisions mensuelles empilées */}
+        <div className="card" style={{ padding: 22 }}>
+          <div className="card-title" style={{ marginBottom: 4 }}>Décisions par mois</div>
+          <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 16 }}>Acceptés · Refusés · Compléments — 6 derniers mois</p>
+          <div style={{ height: 220 }}>
+            {dossiers.length === 0
+              ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#cbd5e1', fontSize: 13 }}>Aucune donnée</div>
+              : <Bar data={decisionsData} options={decisionsOptions} />
+            }
+          </div>
         </div>
-        {enAttente.length === 0 ? (
-          <div className="empty-state"><div className="empty-state-icon">✅</div>Aucun dossier en attente</div>
-        ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                {['Numéro', 'Demandeur', 'Date dépôt', 'Ancienneté', 'Statut'].map(col => <th key={col}>{col}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {enAttente.sort((a, b) => new Date(a.cree_le) - new Date(b.cree_le)).map((d) => {
-                const jours = joursAttente(d.cree_le)
-                const joursColor = jours > 10 ? '#dc2626' : jours > 5 ? '#d97706' : '#059669'
-                const joursBg = jours > 10 ? '#fef2f2' : jours > 5 ? '#fffbeb' : '#ecfdf5'
-                return (
-                  <tr key={d.id}>
-                    <td><span style={{ fontWeight: 700, color: '#2563eb', fontSize: 13 }}>{d.numero}</span></td>
-                    <td>
-                      <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>{d.demandeur?.prenom} {d.demandeur?.nom}</div>
-                      <div style={{ fontSize: 11, color: '#94a3b8' }}>{d.demandeur?.email}</div>
-                    </td>
-                    <td style={{ fontSize: 12, color: '#64748b' }}>{new Date(d.cree_le).toLocaleDateString('fr-FR')}</td>
-                    <td><span className="badge" style={{ background: joursBg, color: joursColor }}>{jours}j</span></td>
-                    <td><span className="badge" style={{ background: '#eff6ff', color: '#2563eb' }}>{d.statut}</span></td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        )}
+
+        {/* Taux acceptation / refus par aide */}
+        <div className="card" style={{ padding: 22 }}>
+          <div className="card-title" style={{ marginBottom: 4 }}>Acceptation / Refus par aide</div>
+          <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 16 }}>Dossiers traités par type d'aide</p>
+          <div style={{ height: 220 }}>
+            {aidesEntries.length === 0
+              ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#cbd5e1', fontSize: 13 }}>Aucune décision enregistrée</div>
+              : <Bar data={tauxAideData} options={tauxAideOptions} />
+            }
+          </div>
+        </div>
       </div>
     </SidebarLayout>
   )

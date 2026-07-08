@@ -21,127 +21,102 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
-      {/* Panneau gauche */}
-      <div className="w-5/12 bg-blue-900 flex flex-col justify-between p-12 relative overflow-hidden flex-shrink-0">
-        <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-white/5" />
-        <div className="absolute -bottom-16 -left-16 w-52 h-52 rounded-full bg-white/5" />
+    <div className="bg-hero-mesh" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', position: 'relative', overflow: 'hidden' }}>
+      {/* Blobs */}
+      <div className="anim-blob" style={{ position: 'absolute', top: '12%', left: '6%', width: 420, height: 420, background: 'radial-gradient(circle, rgba(99,102,241,0.22) 0%, transparent 70%)', filter: 'blur(50px)', pointerEvents: 'none', animationDuration: '14s' }} />
+      <div className="anim-blob" style={{ position: 'absolute', bottom: '12%', right: '6%', width: 360, height: 360, background: 'radial-gradient(circle, rgba(139,92,246,0.2) 0%, transparent 70%)', filter: 'blur(45px)', pointerEvents: 'none', animationDuration: '19s', animationDelay: '-7s' }} />
+      <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '60px 60px', pointerEvents: 'none' }} />
 
-        <Link to="/" className="flex items-center gap-3 no-underline relative z-10">
-          <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-sm">AP</span>
-          </div>
-          <span className="text-white font-bold text-base">Aides Publiques</span>
-        </Link>
-
-        <div className="relative z-10">
-          <h2 className="text-white text-3xl font-extrabold leading-tight mb-4 tracking-tight">
-            Récupérez votre accès
-          </h2>
-          <p className="text-blue-200 text-sm leading-relaxed mb-8">
-            Pas de panique ! Entrez votre adresse email et nous vous enverrons un lien pour réinitialiser votre mot de passe.
-          </p>
-          <div className="flex flex-col gap-3">
-            {[
-              'Lien envoyé en quelques secondes',
-              'Valable pendant 1 heure',
-              'Aucune donnée perdue',
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white text-xs font-bold">✓</span>
-                </div>
-                <span className="text-blue-100 text-sm">{item}</span>
-              </div>
-            ))}
-          </div>
+      {/* Logo */}
+      <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', marginBottom: 32, position: 'relative', zIndex: 1 }}>
+        <div style={{ width: 38, height: 38, borderRadius: 11, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 20px rgba(99,102,241,0.5)', flexShrink: 0 }}>
+          <span style={{ color: '#fff', fontWeight: 800, fontSize: 14 }}>AP</span>
         </div>
+        <span style={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>Aides Publiques</span>
+      </Link>
 
-        <p className="text-blue-400 text-xs relative z-10">© 2026 Plateforme Aides Publiques</p>
+      {/* Glass card */}
+      <div className="anim-fadeInUp" style={{ width: '100%', maxWidth: 420, padding: '36px 40px', borderRadius: 20, background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.14)', boxShadow: '0 24px 64px rgba(0,0,0,0.3)', position: 'relative', zIndex: 1 }}>
+
+        {!envoye ? (
+          <>
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(99,102,241,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                <svg xmlns="http://www.w3.org/2000/svg" style={{ width: 22, height: 22, color: '#a5b4fc' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+              </div>
+              <h1 style={{ fontSize: 24, fontWeight: 800, color: '#fff', marginBottom: 6 }}>Mot de passe oublié ?</h1>
+              <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 0 }}>Entrez votre email pour recevoir un lien de réinitialisation.</p>
+            </div>
+
+            {serverError && (
+              <div style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#fca5a5' }}>
+                {serverError}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: 14 }} noValidate>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.7)', marginBottom: 6 }}>Adresse email</label>
+                <input type="email" placeholder="vous@exemple.fr"
+                  {...register('email', {
+                    required: "L'email est obligatoire",
+                    pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "Format invalide" }
+                  })}
+                  className="input-dark"
+                  style={{ width: '100%', padding: '12px 16px', borderRadius: 10, fontSize: 14, background: 'rgba(255,255,255,0.08)', border: errors.email ? '1px solid rgba(239,68,68,0.5)' : '1px solid rgba(255,255,255,0.14)', outline: 'none', color: '#fff', fontFamily: 'inherit', transition: 'all 0.2s', boxSizing: 'border-box' }} />
+                {errors.email && <p style={{ color: '#fca5a5', fontSize: 12, marginTop: 4 }}>{errors.email.message}</p>}
+              </div>
+
+              <button type="submit" disabled={isSubmitting} className="btn-gradient"
+                style={{ width: '100%', padding: '13px', borderRadius: 10, fontSize: 14, fontFamily: 'inherit', color: '#fff', border: 'none', cursor: 'pointer', opacity: isSubmitting ? 0.6 : 1, marginTop: 4 }}>
+                {isSubmitting ? 'Envoi...' : 'Envoyer le lien de réinitialisation'}
+              </button>
+            </form>
+          </>
+        ) : (
+          <>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                <svg xmlns="http://www.w3.org/2000/svg" style={{ width: 22, height: 22, color: '#6ee7b7' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h1 style={{ fontSize: 24, fontWeight: 800, color: '#fff', marginBottom: 6 }}>Email envoyé !</h1>
+              <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>Un lien de réinitialisation a été envoyé à</p>
+            </div>
+
+            <div style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 10, padding: '12px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 30, height: 30, borderRadius: 8, background: 'rgba(99,102,241,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span style={{ color: '#a5b4fc', fontSize: 14 }}>✉</span>
+              </div>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{emailEnvoye}</span>
+            </div>
+
+            <div style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 10, padding: '10px 14px', marginBottom: 20, fontSize: 12, color: '#fcd34d' }}>
+              ⏱ Le lien est valable <strong>1 heure</strong>. Vérifiez aussi vos spams.
+            </div>
+
+            <Link to="/login" className="btn-gradient"
+              style={{ display: 'block', width: '100%', padding: '13px', borderRadius: 10, fontSize: 14, fontFamily: 'inherit', color: '#fff', border: 'none', cursor: 'pointer', textDecoration: 'none', textAlign: 'center', boxSizing: 'border-box' }}>
+              Retour à la connexion
+            </Link>
+
+            <p style={{ marginTop: 14, textAlign: 'center', fontSize: 12, color: 'rgba(255,255,255,0.38)' }}>
+              Pas reçu ?{' '}
+              <button onClick={() => setEnvoye(false)} style={{ color: '#a5b4fc', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
+                Réessayer
+              </button>
+            </p>
+          </>
+        )}
       </div>
 
-      {/* Panneau droit */}
-      <div className="flex-1 flex items-center justify-center px-8 py-12">
-        <div className="w-full max-w-sm">
-
-          {!envoye ? (
-            <>
-              <div className="mb-8">
-                <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mb-5">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                  </svg>
-                </div>
-                <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight mb-1.5">Mot de passe oublié ?</h1>
-                <p className="text-sm text-gray-400">Entrez votre email pour recevoir un lien de réinitialisation.</p>
-              </div>
-
-              {serverError && (
-                <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-5 text-sm text-red-600 font-medium">
-                  {serverError}
-                </div>
-              )}
-
-              <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Adresse email</label>
-                  <input type="email" placeholder="vous@exemple.fr"
-                    {...register('email', {
-                      required: "L'email est obligatoire",
-                      pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "Format invalide" }
-                    })}
-                    className={`w-full px-4 py-3 rounded-xl text-sm border ${errors.email ? 'border-red-300 bg-red-50 text-red-800' : 'border-gray-200 bg-gray-50 text-gray-800'} outline-none focus:border-blue-500 focus:bg-white transition-colors`} />
-                  {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
-                </div>
-
-                <button type="submit" disabled={isSubmitting}
-                  className="w-full py-3 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors mt-1">
-                  {isSubmitting ? 'Envoi...' : 'Envoyer le lien de réinitialisation'}
-                </button>
-              </form>
-
-              <p className="mt-6 text-center text-sm text-gray-500">
-                <Link to="/login" className="text-blue-600 font-semibold no-underline hover:underline">← Retour à la connexion</Link>
-              </p>
-            </>
-          ) : (
-            <>
-              <div className="mb-8">
-                <div className="w-12 h-12 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-center mb-5">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight mb-1.5">Email envoyé !</h1>
-                <p className="text-sm text-gray-400">Un lien de réinitialisation a été envoyé à</p>
-              </div>
-
-              <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 mb-5 flex items-center gap-3">
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <span className="text-blue-600 text-sm">✉</span>
-                </div>
-                <span className="text-sm font-bold text-gray-800">{emailEnvoye}</span>
-              </div>
-
-              <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 mb-6 text-xs text-amber-700 font-medium">
-                ⏱ Le lien est valable <strong>1 heure</strong>. Vérifiez aussi vos spams.
-              </div>
-
-              <Link to="/login"
-                className="block w-full py-3 bg-blue-600 text-white text-sm font-bold rounded-xl text-center no-underline hover:bg-blue-700 transition-colors">
-                Retour à la connexion
-              </Link>
-
-              <p className="mt-4 text-center text-xs text-gray-400">
-                Pas reçu ?{' '}
-                <button onClick={() => setEnvoye(false)} className="text-blue-600 font-semibold hover:underline bg-none border-none cursor-pointer text-xs">
-                  Réessayer
-                </button>
-              </p>
-            </>
-          )}
-        </div>
-      </div>
+      {/* Lien bas */}
+      <p style={{ marginTop: 24, fontSize: 13, color: 'rgba(255,255,255,0.38)', position: 'relative', zIndex: 1 }}>
+        <Link to="/login" style={{ color: '#a5b4fc', fontWeight: 600, textDecoration: 'none' }}>← Retour à la connexion</Link>
+      </p>
     </div>
   )
 }

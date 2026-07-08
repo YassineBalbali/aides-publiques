@@ -62,6 +62,14 @@ function ProfilAdmin() {
     } catch { showMsg('Erreur upload photo', true) }
   }
 
+  const supprimerPhoto = async () => {
+    try {
+      await api.delete(`/auth/profil/${userId}/photo`)
+      setProfil(prev => ({ ...prev, photo: null }))
+      showMsg('Photo supprimée')
+    } catch { showMsg('Erreur lors de la suppression', true) }
+  }
+
   if (chargement) return (
     <SidebarLayout navItems={ADMIN_NAV} role="admin" prenom={payload?.prenom || ''} nom={payload?.nom || ''}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50vh', color: '#94a3b8' }}>Chargement...</div>
@@ -96,13 +104,17 @@ function ProfilAdmin() {
           <p style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>{profil?.prenom} {profil?.nom}</p>
           <p style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{profil?.email}</p>
           <span className="badge" style={{ background: '#fef2f2', color: '#dc2626', marginTop: 6 }}>Administrateur</span>
+          {profil?.photo && (
+            <button onClick={supprimerPhoto} style={{ display: 'block', marginTop: 6, fontSize: 12, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 600 }}>
+              Supprimer la photo
+            </button>
+          )}
         </div>
 
         {/* Stats inline */}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 24 }}>
           {[
             { label: 'Rôle', value: 'Admin' },
-            { label: 'Membre depuis', value: profil?.cree_le ? new Date(profil.cree_le).toLocaleDateString('fr-FR') : '—' },
           ].map((s, i) => (
             <div key={i} style={{ textAlign: 'center' }}>
               <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.label}</p>
